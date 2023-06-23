@@ -12,6 +12,7 @@ pub enum TokenType {
     Rbrace,
     Equal,
     Comma,
+    Star,
     Eof
 }
 
@@ -73,6 +74,7 @@ impl Lexer {
                 '}' => return Ok(self.advance_with_tok(TokenType::Rbrace)),
                 '=' => return Ok(self.advance_with_tok(TokenType::Equal)),
                 ',' => return Ok(self.advance_with_tok(TokenType::Comma)),
+                '*' => return Ok(self.advance_with_tok(TokenType::Star)),
                 '\n' => {
                     self.line += 1;
                     self.advance()

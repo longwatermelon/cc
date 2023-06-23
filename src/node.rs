@@ -1,6 +1,13 @@
 #[derive(Clone, Debug)]
-pub enum Dtype {
-    Int
+pub enum DtypeVariant {
+    Int,
+    Char
+}
+
+#[derive(Clone, Debug)]
+pub struct Dtype {
+    variant: DtypeVariant,
+    indirection: Vec<char>
 }
 
 #[derive(Clone, Debug)]
@@ -18,6 +25,16 @@ pub enum NodeVariant {
     Fcall {
         name: String,
         args: Vec<Node>
+    },
+    Fdef {
+        name: String,
+        params: Vec<Node>,
+        body: Node,
+        rtype: Dtype
+    },
+    Param {
+        name: String,
+        dtype: Dtype
     },
     Vardef {
         name: String,
@@ -44,10 +61,15 @@ pub struct Node {
 }
 
 impl Dtype {
-    pub fn from_str(dtype: String) -> Self {
-        match dtype.as_str() {
-            "int" => Dtype::Int,
-            _ => panic!("{} is not a valid dtype", dtype)
+    pub fn new(dtype: String, indirection: Vec<char>) -> Self {
+        Self { variant: Dtype::str2variant(dtype), indirection }
+    }
+
+    pub fn str2variant(s: String) -> DtypeVariant {
+        match s.as_str() {
+            "int" => DtypeVariant::Int,
+            "char" => DtypeVariant::Char,
+            _ => panic!("{} is not a valid data type.", s)
         }
     }
 }

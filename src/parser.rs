@@ -20,6 +20,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Node, Error> {
+        let line: usize = self.curr.line;
         let mut cpd_values: Vec<Node> = Vec::new();
 
         loop {
@@ -30,14 +31,16 @@ impl Parser {
                 }
             );
 
-            self.expect(TokenType::Semi)?;
+            if self.prev.ttype != TokenType::Rbrace {
+                self.expect(TokenType::Semi)?;
+            }
         }
 
         if cpd_values.is_empty() {
-            cpd_values.push(Node::new(NodeVariant::Noop, 0));
+            cpd_values.push(Node::new(NodeVariant::Noop, line));
         }
 
-        Ok(Node::new(NodeVariant::Cpd { values: cpd_values }, 0))
+        Ok(Node::new(NodeVariant::Cpd { values: cpd_values }, line))
     }
 
     fn expect(&mut self, ttype: TokenType) -> Result<(), Error> {
@@ -119,12 +122,37 @@ impl Parser {
         Ok(Node::new(NodeVariant::Fcall { name, args }, line))
     }
 
+    fn parse_fdef(&mut self, rtype: Dtype) -> Result<Node, Error> {
+        let line: usize = self.curr.line;
+        let name: String = self.prev.value.clone();
+        let mut params: Vec<Node> = Vec::new();
+
+        self.expect(TokenType::Lparen)?;
+        loop {
+            match self.parse_expr()? {
+                Some(expr) => params.push(expr),
+                None => break
+            };
+
+            if self.curr.ttype != TokenType::Rparen {
+                self.expect(TokenType::Comma)?;
+            }
+        }
+        self.expect(TokenType::Rparen)?;
+
+        self.expect(TokenType::Lbrace)?;
+        let body: Node = self.parse()?;
+        self.expect(TokenType::Rbrace)?;
+
+        Ok(Node::new(NodeVariant::Fdef { name, params, body, rtype }, line))
+    }
+
     fn parse_var(&mut self) -> Result<Node, Error> {
         let name: String = self.prev.value.clone();
         let line: usize = self.curr.line;
 
         match self.curr.ttype {
-            TokenType::Id => {
+            TokenType::Id | TokenType::Star => {
                 self.parse_vardef()
             },
             TokenType::Equal => self.parse_assign(),
@@ -134,25 +162,44 @@ impl Parser {
         }
     }
 
+    fn parse_indirection(&mut self) -> Vec<char> {
+        let mut res: Vec<char> = Vec::new();
+        while self.curr.ttype == TokenType::Star {
+            res.push(self.curr.value.chars().nth(0).unwrap());
+            self.expect(TokenType::Star).unwrap();
+        }
+
+        res
+    }
+
     fn parse_vardef(&mut self) -> Result<Node, Error> {
+        let dtype: Dtype = Dtype::new(self.prev.value.clone(), self.parse_indirection());
         let name: String = self.curr.value.clone();
-        let dtype: Dtype = Dtype::from_str(self.prev.value.clone());
         let line: usize = self.curr.line;
 
         self.expect(TokenType::Id)?;
-        self.expect(TokenType::Equal)?;
-        Ok(
-            Node::new(NodeVariant::Vardef {
-                name: name.clone(),
-                value:
-                    match self.parse_expr()? {
-                        Some(x) => x,
-                        None => return Err(Error::new(format!("no expression in definition of '{}'.", name), line))
-                    },
-                dtype
-                }, line
-            )
-        )
+
+        match self.curr.ttype {
+            TokenType::Equal => {
+                self.expect(TokenType::Equal)?;
+                Ok(
+                    Node::new(NodeVariant::Vardef {
+                        name: name.clone(),
+                        value:
+                            match self.parse_expr()? {
+                                Some(x) => x,
+                                None => return Err(Error::new(format!("no expression in definition of '{}'.", name), line))
+                            },
+                        dtype
+                        }, line
+                    )
+                )
+            },
+            TokenType::Lparen => {
+                self.parse_fdef(dtype)
+            },
+            _ => Ok(Node::new(NodeVariant::Param { name, dtype }, line))
+        }
     }
 
     fn parse_assign(&mut self) -> Result<Node, Error> {
