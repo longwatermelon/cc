@@ -13,6 +13,7 @@ pub enum TokenType {
     Equal,
     Comma,
     Star,
+    Amp,
     Eof
 }
 
@@ -75,6 +76,7 @@ impl Lexer {
                 '=' => return Ok(self.advance_with_tok(TokenType::Equal)),
                 ',' => return Ok(self.advance_with_tok(TokenType::Comma)),
                 '*' => return Ok(self.advance_with_tok(TokenType::Star)),
+                '&' => return Ok(self.advance_with_tok(TokenType::Amp)),
                 '\n' => {
                     self.line += 1;
                     self.advance()

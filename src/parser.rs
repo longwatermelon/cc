@@ -62,7 +62,7 @@ impl Parser {
                 TokenType::Str => Some(self.parse_str()?),
                 TokenType::Int => Some(self.parse_int()?),
                 TokenType::Id => Some(self.parse_id()?),
-                TokenType::Star => Some(self.parse_var()?),
+                TokenType::Star | TokenType::Amp => Some(self.parse_var()?),
                 TokenType::Lbrace => {
                     self.expect(TokenType::Lbrace)?;
                     let node = self.parse()?;
@@ -183,9 +183,9 @@ impl Parser {
 
     fn parse_indirection(&mut self) -> Vec<char> {
         let mut res: Vec<char> = Vec::new();
-        while self.curr.ttype == TokenType::Star {
+        while self.curr.ttype == TokenType::Star || self.curr.ttype == TokenType::Amp {
             res.push(self.curr.value.chars().nth(0).unwrap());
-            self.expect(TokenType::Star).unwrap();
+            self.expect(self.curr.ttype).unwrap();
         }
 
         res
