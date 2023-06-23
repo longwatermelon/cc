@@ -91,6 +91,8 @@ impl Parser {
     fn parse_id(&mut self) -> Result<Node, Error> {
         if self.curr.value == "if" {
             return self.parse_if();
+        } else if self.curr.value == "return" {
+            return self.parse_return();
         }
 
         self.expect(TokenType::Id)?;
@@ -146,6 +148,11 @@ impl Parser {
         self.expect(TokenType::Rbrace)?;
 
         Ok(Node::new(NodeVariant::Fdef { name, params, body, rtype }, line))
+    }
+
+    fn parse_return(&mut self) -> Result<Node, Error> {
+        self.expect(TokenType::Id)?;
+        Ok(Node::new(NodeVariant::Return { value: self.parse_expr()?.unwrap() }, self.curr.line))
     }
 
     fn parse_var(&mut self) -> Result<Node, Error> {

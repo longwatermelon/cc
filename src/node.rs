@@ -54,6 +54,9 @@ pub enum NodeVariant {
     If {
         cond: Node,
         body: Node
+    },
+    Return {
+        value: Node
     }
 }
 
