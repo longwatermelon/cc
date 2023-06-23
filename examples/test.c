@@ -1,4 +1,4 @@
-int main(int argc, char **argv)
+int *main(int argc, char **argv)
 {
-    printf("%d\n", 5);
+    printf("%s\n", *s);
 }

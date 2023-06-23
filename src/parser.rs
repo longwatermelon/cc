@@ -62,6 +62,7 @@ impl Parser {
                 TokenType::Str => Some(self.parse_str()?),
                 TokenType::Int => Some(self.parse_int()?),
                 TokenType::Id => Some(self.parse_id()?),
+                TokenType::Star => Some(self.parse_var()?),
                 TokenType::Lbrace => {
                     self.expect(TokenType::Lbrace)?;
                     let node = self.parse()?;
@@ -148,16 +149,27 @@ impl Parser {
     }
 
     fn parse_var(&mut self) -> Result<Node, Error> {
-        let name: String = self.prev.value.clone();
+        // Start on indirection, or name if indirection is inapplicable
+        let begin_tok: String = self.prev.value.clone();
+
+        let indirection: Vec<char> = self.parse_indirection();
+        let name: String = self.curr.value.clone();
         let line: usize = self.curr.line;
 
-        match self.curr.ttype {
-            TokenType::Id | TokenType::Star => {
-                self.parse_vardef()
-            },
-            TokenType::Equal => self.parse_assign(),
-            _ => {
-                Ok(Node::new(NodeVariant::Var { name }, line))
+        let node_var: Node = Node::new(NodeVariant::Var { name: name.clone(), indirection: indirection.clone() }, line);
+
+        // Vardefs always start with a type
+        if Dtype::str2variant(begin_tok.clone()).is_ok() {
+            self.parse_vardef(Dtype::new(begin_tok, indirection)?)
+        } else {
+            if !indirection.is_empty() {
+                self.expect(TokenType::Id)?;
+            }
+            match self.curr.ttype {
+                TokenType::Equal => self.parse_assign(indirection),
+                _ => {
+                    Ok(node_var)
+                }
             }
         }
     }
@@ -172,11 +184,9 @@ impl Parser {
         res
     }
 
-    fn parse_vardef(&mut self) -> Result<Node, Error> {
-        let dtype: Dtype = Dtype::new(self.prev.value.clone(), self.parse_indirection());
+    fn parse_vardef(&mut self, dtype: Dtype) -> Result<Node, Error> {
         let name: String = self.curr.value.clone();
         let line: usize = self.curr.line;
-
         self.expect(TokenType::Id)?;
 
         match self.curr.ttype {
@@ -202,9 +212,9 @@ impl Parser {
         }
     }
 
-    fn parse_assign(&mut self) -> Result<Node, Error> {
+    fn parse_assign(&mut self, indirection: Vec<char>) -> Result<Node, Error> {
         let line: usize = self.curr.line;
-        let l: Node = Node::new(NodeVariant::Var { name: self.prev.value.clone() }, line);
+        let l: Node = Node::new(NodeVariant::Var { name: self.prev.value.clone(), indirection }, line);
         self.expect(TokenType::Equal)?;
         let r: Node = Node::new(self.parse_expr()?.unwrap().variant.as_ref().clone(), line);
 

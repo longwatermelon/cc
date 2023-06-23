@@ -1,3 +1,5 @@
+use crate::error::Error;
+
 #[derive(Clone, Debug)]
 pub enum DtypeVariant {
     Int,
@@ -42,7 +44,8 @@ pub enum NodeVariant {
         dtype: Dtype
     },
     Var {
-        name: String
+        name: String,
+        indirection: Vec<char>
     },
     Assign {
         l: Node,
@@ -61,15 +64,15 @@ pub struct Node {
 }
 
 impl Dtype {
-    pub fn new(dtype: String, indirection: Vec<char>) -> Self {
-        Self { variant: Dtype::str2variant(dtype), indirection }
+    pub fn new(dtype: String, indirection: Vec<char>) -> Result<Self, Error> {
+        Ok(Self { variant: Dtype::str2variant(dtype)?, indirection })
     }
 
-    pub fn str2variant(s: String) -> DtypeVariant {
+    pub fn str2variant(s: String) -> Result<DtypeVariant, Error> {
         match s.as_str() {
-            "int" => DtypeVariant::Int,
-            "char" => DtypeVariant::Char,
-            _ => panic!("{} is not a valid data type.", s)
+            "int" => Ok(DtypeVariant::Int),
+            "char" => Ok(DtypeVariant::Char),
+            _ => Err(Error::new(format!("{} is not a valid data type.", s), 0))
         }
     }
 }
