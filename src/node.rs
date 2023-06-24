@@ -50,10 +50,6 @@ pub enum NodeVariant {
     Var {
         name: String
     },
-    Assign {
-        l: Node,
-        r: Node
-    },
     If {
         cond: Node,
         body: Node

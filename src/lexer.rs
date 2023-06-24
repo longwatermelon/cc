@@ -59,7 +59,8 @@ impl Token {
             TokenType::LessEqual |
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
-            TokenType::Dot
+            TokenType::Dot |
+            TokenType::Equal
         )
     }
 
