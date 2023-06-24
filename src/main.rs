@@ -22,7 +22,7 @@ fn main() {
 
     match root {
         Ok(x) => println!("{:#?}", x),
-        Err(e) => println!("{}", e.to_string())
+        Err(e) => println!("{}", e)
     }
 }
 

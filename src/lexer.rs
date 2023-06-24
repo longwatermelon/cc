@@ -43,13 +43,12 @@ impl Token {
     }
 
     pub fn is_binop(&self) -> bool {
-        match self.ttype {
-            TokenType::Plus |
+        matches!(self.ttype,
+            TokenType::Plus  |
             TokenType::Minus |
-            TokenType::Star |
-            TokenType::Div => true,
-            _ => false
-        }
+            TokenType::Star  |
+            TokenType::Div
+        )
     }
 }
 
@@ -59,7 +58,7 @@ impl Lexer {
             contents: contents.clone(),
             line: 1,
             index: 0,
-            ch: contents.chars().nth(0).unwrap()
+            ch: contents.chars().next().unwrap()
         }
     }
 
@@ -102,7 +101,7 @@ impl Lexer {
             }
         }
 
-        return Ok(Token::new(TokenType::Eof, String::new(), self.line));
+        Ok(Token::new(TokenType::Eof, String::new(), self.line))
     }
 
     pub fn peek(&mut self, count: usize) -> Result<Token, Error> {
@@ -129,7 +128,7 @@ impl Lexer {
             self.advance();
         }
 
-        return res;
+        res
     }
 
     fn collect_str(&mut self) -> String {
@@ -142,7 +141,7 @@ impl Lexer {
         }
 
         self.advance();
-        return res;
+        res
     }
 
     fn collect_id(&mut self) -> String {
@@ -153,13 +152,13 @@ impl Lexer {
             self.advance();
         }
 
-        return res;
+        res
     }
 
     fn advance_with_tok(&mut self, ttype: TokenType) -> Token {
         let ch: char = self.ch;
         self.advance();
-        return Token::new(ttype, String::from(ch), self.line);
+        Token::new(ttype, String::from(ch), self.line)
     }
 }
 
