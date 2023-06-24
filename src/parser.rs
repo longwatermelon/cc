@@ -63,30 +63,34 @@ impl Parser {
             self.expect(TokenType::Semi)?;
         }
 
-        let n: Node = match self.curr.ttype {
-            TokenType::Str => self.parse_str()?,
-            TokenType::Int => self.parse_int()?,
-            TokenType::Id => self.parse_id()?,
-            TokenType::Star => self.parse_deref()?,
-            TokenType::Amp => self.parse_ref()?,
+        let mut n: Option<Node> = match self.curr.ttype {
+            TokenType::Str => Some(self.parse_str()?),
+            TokenType::Int => Some(self.parse_int()?),
+            TokenType::Id => Some(self.parse_id()?),
             TokenType::Lbrace => {
                 self.expect(TokenType::Lbrace)?;
                 let node = self.parse()?;
                 self.expect(TokenType::Rbrace)?;
 
-                node
+                Some(node)
             },
             TokenType::Lparen => {
                 self.expect(TokenType::Lparen)?;
                 let expr = self.parse_expr(false)?.unwrap();
                 self.expect(TokenType::Rparen)?;
 
-                expr
+                Some(expr)
             },
-            _ => return Ok(None)
+            _ => None
         };
 
-        self.prev_expr = n.clone();
+        if self.curr.is_unop() {
+            n = Some(self.parse_unop()?);
+        }
+
+        if let Some(n) = &n {
+            self.prev_expr = n.clone();
+        }
 
         if !only_one {
             if self.curr.is_binop() {
@@ -94,7 +98,7 @@ impl Parser {
             }
         }
 
-        Ok(Some(n))
+        Ok(n)
     }
 
     fn parse_int(&mut self) -> Result<Node, Error> {
@@ -193,14 +197,9 @@ impl Parser {
         }
     }
 
-    fn parse_ref(&mut self) -> Result<Node, Error> {
-        self.expect(TokenType::Amp)?;
-        Ok(Node::new(NodeVariant::Unop { utype: TokenType::Amp, r: self.parse_expr(true)?.unwrap() }, self.curr.line))
-    }
-
-    fn parse_deref(&mut self) -> Result<Node, Error> {
-        self.expect(TokenType::Star)?;
-        Ok(Node::new(NodeVariant::Unop { utype: TokenType::Star, r: self.parse_expr(true)?.unwrap() }, self.curr.line))
+    fn parse_unop(&mut self) -> Result<Node, Error> {
+        self.expect(self.curr.ttype)?;
+        Ok(Node::new(NodeVariant::Unop { utype: self.prev.ttype, r: self.parse_expr(true)?.unwrap() }, self.curr.line))
     }
 
     fn parse_vardef(&mut self) -> Result<Node, Error> {
@@ -212,12 +211,12 @@ impl Parser {
 
         self.expect(TokenType::Id)?;
 
-        let var: Node = match self.curr.ttype {
-            TokenType::Id => self.parse_var()?,
-            TokenType::Star => self.parse_deref()?,
-            TokenType::Amp => self.parse_ref()?,
-            _ => panic!()
+        let var: Node = if self.curr.is_unop() {
+            self.parse_unop()?
+        } else {
+            self.parse_var()?
         };
+
         let line: usize = self.curr.line;
 
         match self.curr.ttype {
