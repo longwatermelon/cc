@@ -14,6 +14,7 @@ pub enum TokenType {
     Comma,
     Star,
     Amp,
+    Plus,
     Eof
 }
 
@@ -24,6 +25,7 @@ pub struct Token {
     pub line: usize
 }
 
+#[derive(Clone)]
 pub struct Lexer {
     contents: String,
     pub line: usize,
@@ -77,6 +79,7 @@ impl Lexer {
                 ',' => return Ok(self.advance_with_tok(TokenType::Comma)),
                 '*' => return Ok(self.advance_with_tok(TokenType::Star)),
                 '&' => return Ok(self.advance_with_tok(TokenType::Amp)),
+                '+' => return Ok(self.advance_with_tok(TokenType::Plus)),
                 '\n' => {
                     self.line += 1;
                     self.advance()
@@ -86,6 +89,15 @@ impl Lexer {
         }
 
         return Ok(Token::new(TokenType::Eof, String::new(), self.line));
+    }
+
+    pub fn peek(&mut self, count: usize) -> Result<Token, Error> {
+        let mut copy: Lexer = self.clone();
+        for _ in 0..count - 1 {
+            copy.next()?;
+        }
+
+        copy.next()
     }
 
     fn advance(&mut self) {

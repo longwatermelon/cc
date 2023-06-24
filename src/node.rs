@@ -1,4 +1,5 @@
 use crate::error::Error;
+use crate::lexer::TokenType;
 
 #[derive(Clone, Debug)]
 pub enum DtypeVariant {
@@ -57,6 +58,11 @@ pub enum NodeVariant {
     },
     Return {
         value: Node
+    },
+    Binop {
+        btype: TokenType,
+        l: Node,
+        r: Node
     }
 }
 

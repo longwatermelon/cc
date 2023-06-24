@@ -5,7 +5,9 @@ use crate::node::*;
 pub struct Parser {
     lexer: Lexer,
     curr: Token,
-    prev: Token
+    prev: Token,
+    prev_expr: Node,
+    ignore_ops: bool
 }
 
 impl Parser {
@@ -15,7 +17,9 @@ impl Parser {
         Ok(Self {
             lexer,
             curr: curr.clone(),
-            prev: curr
+            prev: curr,
+            prev_expr: Node::new(NodeVariant::Noop, 0),
+            ignore_ops: false
         })
     }
 
@@ -57,21 +61,31 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Result<Option<Node>, Error> {
-        Ok(
-            match self.curr.ttype {
-                TokenType::Str => Some(self.parse_str()?),
-                TokenType::Int => Some(self.parse_int()?),
-                TokenType::Id => Some(self.parse_id()?),
-                TokenType::Star | TokenType::Amp => Some(self.parse_var()?),
-                TokenType::Lbrace => {
-                    self.expect(TokenType::Lbrace)?;
-                    let node = self.parse()?;
-                    self.expect(TokenType::Rbrace)?;
-                    Some(node)
-                },
-                _ => None
+        let n: Node = match self.curr.ttype {
+            TokenType::Str => self.parse_str()?,
+            TokenType::Int => self.parse_int()?,
+            TokenType::Id => self.parse_id()?,
+            TokenType::Star | TokenType::Amp => self.parse_var()?,
+            TokenType::Lbrace => {
+                self.expect(TokenType::Lbrace)?;
+                let node = self.parse()?;
+                self.expect(TokenType::Rbrace)?;
+                node
+            },
+            _ => return Ok(None)
+        };
+
+        self.prev_expr = n.clone();
+
+        if !self.ignore_ops {
+            if self.curr.ttype == TokenType::Plus {
+                return Ok(Some(self.parse_binop()?));
             }
-        )
+        } else {
+            self.ignore_ops = false;
+        }
+
+        Ok(Some(n))
     }
 
     fn parse_int(&mut self) -> Result<Node, Error> {
@@ -90,22 +104,21 @@ impl Parser {
 
     fn parse_id(&mut self) -> Result<Node, Error> {
         if self.curr.value == "if" {
-            return self.parse_if();
+            self.parse_if()
         } else if self.curr.value == "return" {
-            return self.parse_return();
-        }
-
-        self.expect(TokenType::Id)?;
-
-        if self.curr.ttype == TokenType::Lparen {
-            self.parse_fcall()
+            self.parse_return()
         } else {
-            self.parse_var()
+            match self.lexer.peek(1)?.ttype {
+                TokenType::Lparen => self.parse_fcall(),
+                                _ => self.parse_var()
+            }
         }
     }
 
     fn parse_fcall(&mut self) -> Result<Node, Error> {
-        let name: String = self.prev.value.clone();
+        let name: String = self.curr.value.clone();
+        self.expect(TokenType::Id)?;
+
         let mut args: Vec<Node> = Vec::new();
         let line: usize = self.curr.line;
 
@@ -116,8 +129,12 @@ impl Parser {
                 None => break
             };
 
+            println!("{}", self.curr.value);
+
             if self.curr.ttype != TokenType::Rparen {
                 self.expect(TokenType::Comma)?;
+            } else {
+                break;
             }
         }
         self.expect(TokenType::Rparen)?;
@@ -157,7 +174,18 @@ impl Parser {
 
     fn parse_var(&mut self) -> Result<Node, Error> {
         // Start on indirection, or name if indirection is inapplicable
-        let begin_tok: String = self.prev.value.clone();
+        // begin_tok is either a type or something meaningless, only used for checking if vardef
+        let begin_tok: String = self.curr.value.clone();
+        let next_type: TokenType = self.lexer.peek(1)?.ttype;
+        // terrible hack
+        if self.curr.ttype == TokenType::Id && (
+            next_type == TokenType::Id || 
+            next_type == TokenType::Star ||
+            next_type == TokenType::Amp ||
+            next_type == TokenType::Equal
+        ) {
+            self.expect(TokenType::Id)?;
+        }
 
         let indirection: Vec<char> = self.parse_indirection();
         let name: String = self.curr.value.clone();
@@ -172,9 +200,15 @@ impl Parser {
             if !indirection.is_empty() {
                 self.expect(TokenType::Id)?;
             }
+
             match self.curr.ttype {
-                TokenType::Equal => self.parse_assign(indirection),
+                TokenType::Equal => {
+                    self.parse_assign(indirection)
+                },
                 _ => {
+                    if indirection.is_empty() {
+                        self.expect(TokenType::Id)?;
+                    }
                     Ok(node_var)
                 }
             }
@@ -242,6 +276,47 @@ impl Parser {
                 line
             )
         )
+    }
+
+    fn parse_binop(&mut self) -> Result<Node, Error> {
+        let line: usize = self.curr.line;
+        let btype: TokenType = self.curr.ttype;
+        self.expect(btype)?;
+
+        let l: Node = self.prev_expr.clone();
+        self.ignore_ops = true;
+        let r: Node = self.parse_expr()?.unwrap();
+
+        let n: Node = Node::new(NodeVariant::Binop { btype, l, r },line);
+
+        if self.curr.ttype == TokenType::Plus {
+            self.prev_expr = n;
+            self.parse_binop()
+        } else {
+            Ok(n)
+        }
+        // struct Node *node = node_alloc(NODE_BINOP);
+        // node->error_line = parser->curr_tok->line_num;
+        // node->op_stack_offset = -parser->stack_size;
+        // parser->stack_size += 8;
+
+        // node->op_type = parser->curr_tok->binop_type;
+        // parser_advance(parser, 1);
+
+        // node->op_l = parser->prev_node;
+        // node->op_r = parser_parse_expr(parser, true);
+
+        // if (parser->curr_tok->type == TOKEN_BINOP)
+        // {
+        //     parser->prev_node = node;
+        //     struct Node *root = parser_parse_binop(parser);
+
+        //     return root;
+        // }
+        // else
+        // {
+        //     return node;
+        // }
     }
 }
 
