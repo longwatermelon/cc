@@ -54,8 +54,8 @@ impl Parser {
             Ok(())
         } else {
             Err(Error::new(format!(
-                "expected token type {:?}, got {:?}.\nBacktrace:\n{}",
-                ttype, self.curr.ttype, std::backtrace::Backtrace::capture()
+                "expected token type {:?}, got {:?}.",
+                ttype, self.curr.ttype
             ), self.curr.line))
         }
     }
@@ -79,7 +79,7 @@ impl Parser {
         self.prev_expr = n.clone();
 
         if !self.ignore_ops {
-            if self.curr.ttype == TokenType::Plus {
+            if self.curr.is_binop() {
                 return Ok(Some(self.parse_binop()?));
             }
         } else {
@@ -229,7 +229,6 @@ impl Parser {
             TokenType::Lparen => {
                 self.parse_fdef(dtype)
             },
-            // _ => Ok(Node::new(NodeVariant::Param { name: var.var_name(), dtype }, line))
             _ => Ok(Node::new(NodeVariant::Vardef { var, value: Node::new(NodeVariant::Noop, 0), dtype }, line))
         }
     }
@@ -270,34 +269,12 @@ impl Parser {
 
         let n: Node = Node::new(NodeVariant::Binop { btype, l, r },line);
 
-        if self.curr.ttype == TokenType::Plus {
+        if self.curr.is_binop() {
             self.prev_expr = n;
             self.parse_binop()
         } else {
             Ok(n)
         }
-        // struct Node *node = node_alloc(NODE_BINOP);
-        // node->error_line = parser->curr_tok->line_num;
-        // node->op_stack_offset = -parser->stack_size;
-        // parser->stack_size += 8;
-
-        // node->op_type = parser->curr_tok->binop_type;
-        // parser_advance(parser, 1);
-
-        // node->op_l = parser->prev_node;
-        // node->op_r = parser_parse_expr(parser, true);
-
-        // if (parser->curr_tok->type == TOKEN_BINOP)
-        // {
-        //     parser->prev_node = node;
-        //     struct Node *root = parser_parse_binop(parser);
-
-        //     return root;
-        // }
-        // else
-        // {
-        //     return node;
-        // }
     }
 }
 

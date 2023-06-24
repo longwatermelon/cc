@@ -15,6 +15,8 @@ pub enum TokenType {
     Star,
     Amp,
     Plus,
+    Minus,
+    Div,
     Eof
 }
 
@@ -37,6 +39,16 @@ impl Token {
     pub fn new(ttype: TokenType, value: String, line: usize) -> Self {
         Self {
             ttype, value, line
+        }
+    }
+
+    pub fn is_binop(&self) -> bool {
+        match self.ttype {
+            TokenType::Plus |
+            TokenType::Minus |
+            TokenType::Star |
+            TokenType::Div => true,
+            _ => false
         }
     }
 }
@@ -80,6 +92,8 @@ impl Lexer {
                 '*' => return Ok(self.advance_with_tok(TokenType::Star)),
                 '&' => return Ok(self.advance_with_tok(TokenType::Amp)),
                 '+' => return Ok(self.advance_with_tok(TokenType::Plus)),
+                '-' => return Ok(self.advance_with_tok(TokenType::Minus)),
+                '/' => return Ok(self.advance_with_tok(TokenType::Div)),
                 '\n' => {
                     self.line += 1;
                     self.advance()

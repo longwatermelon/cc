@@ -9,7 +9,7 @@ use node::Node;
 use std::fs;
 
 fn main() {
-    let prog: String = fs::read_to_string("examples/comp.c").expect("Couldn't read file examples/test.c.");
+    let prog: String = fs::read_to_string("examples/test.c").expect("Couldn't read file examples/test.c.");
 
     let mut parser: Parser = Parser::new(prog).unwrap();
     let root: Result<Node, Error> = parser.parse();
