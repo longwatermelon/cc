@@ -214,11 +214,13 @@ impl Parser {
 
     fn parse_ref(&mut self) -> Result<Node, Error> {
         self.expect(TokenType::Amp)?;
+        self.ignore_ops = true;
         Ok(Node::new(NodeVariant::Ref { value: self.parse_expr()?.unwrap() }, self.curr.line))
     }
 
     fn parse_deref(&mut self) -> Result<Node, Error> {
         self.expect(TokenType::Star)?;
+        self.ignore_ops = true;
         Ok(Node::new(NodeVariant::Deref { value: self.parse_expr()?.unwrap() }, self.curr.line))
     }
 

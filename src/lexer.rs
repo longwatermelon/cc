@@ -22,6 +22,7 @@ pub enum TokenType {
     Greater,
     LessEqual,
     GreaterEqual,
+    Dot,
     Eof
 }
 
@@ -57,7 +58,8 @@ impl Token {
             TokenType::Greater |
             TokenType::LessEqual |
             TokenType::GreaterEqual |
-            TokenType::EqualCmp
+            TokenType::EqualCmp |
+            TokenType::Dot
         )
     }
 }
@@ -126,6 +128,7 @@ impl Lexer {
                         return Ok(Token::new(TokenType::Greater, ">".to_string(), self.line));
                     }
                 },
+                '.' => return Ok(self.advance_with_tok(TokenType::Dot)),
                 '\n' => {
                     self.line += 1;
                     self.advance()
