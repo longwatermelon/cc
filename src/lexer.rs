@@ -17,6 +17,11 @@ pub enum TokenType {
     Plus,
     Minus,
     Div,
+    EqualCmp,
+    Less,
+    Greater,
+    LessEqual,
+    GreaterEqual,
     Eof
 }
 
@@ -47,7 +52,12 @@ impl Token {
             TokenType::Plus  |
             TokenType::Minus |
             TokenType::Star  |
-            TokenType::Div
+            TokenType::Div   |
+            TokenType::Less  |
+            TokenType::Greater |
+            TokenType::LessEqual |
+            TokenType::GreaterEqual |
+            TokenType::EqualCmp
         )
     }
 }
@@ -86,13 +96,36 @@ impl Lexer {
                 ')' => return Ok(self.advance_with_tok(TokenType::Rparen)),
                 '{' => return Ok(self.advance_with_tok(TokenType::Lbrace)),
                 '}' => return Ok(self.advance_with_tok(TokenType::Rbrace)),
-                '=' => return Ok(self.advance_with_tok(TokenType::Equal)),
+                '=' => {
+                    self.advance();
+                    if self.ch == '=' {
+                        return Ok(self.advance_with_tok(TokenType::EqualCmp));
+                    } else {
+                        return Ok(Token::new(TokenType::Equal, "=".to_string(), self.line));
+                    }
+                },
                 ',' => return Ok(self.advance_with_tok(TokenType::Comma)),
                 '*' => return Ok(self.advance_with_tok(TokenType::Star)),
                 '&' => return Ok(self.advance_with_tok(TokenType::Amp)),
                 '+' => return Ok(self.advance_with_tok(TokenType::Plus)),
                 '-' => return Ok(self.advance_with_tok(TokenType::Minus)),
                 '/' => return Ok(self.advance_with_tok(TokenType::Div)),
+                '<' => {
+                    self.advance();
+                    if self.ch == '=' {
+                        return Ok(self.advance_with_tok(TokenType::LessEqual));
+                    } else {
+                        return Ok(Token::new(TokenType::Less, "<".to_string(), self.line));
+                    }
+                },
+                '>' => {
+                    self.advance();
+                    if self.ch == '=' {
+                        return Ok(self.advance_with_tok(TokenType::GreaterEqual));
+                    } else {
+                        return Ok(Token::new(TokenType::Greater, ">".to_string(), self.line));
+                    }
+                },
                 '\n' => {
                     self.line += 1;
                     self.advance()
