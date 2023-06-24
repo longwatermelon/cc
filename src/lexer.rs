@@ -23,6 +23,8 @@ pub enum TokenType {
     LessEqual,
     GreaterEqual,
     Dot,
+    And,
+    Or,
     Eof
 }
 
@@ -60,7 +62,9 @@ impl Token {
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
             TokenType::Dot |
-            TokenType::Equal
+            TokenType::Equal |
+            TokenType::And |
+            TokenType::Or
         )
     }
 
@@ -71,7 +75,9 @@ impl Token {
             TokenType::Greater |
             TokenType::LessEqual |
             TokenType::GreaterEqual |
-            TokenType::EqualCmp
+            TokenType::EqualCmp |
+            TokenType::And |
+            TokenType::Or
         )
     }
 
@@ -127,7 +133,22 @@ impl Lexer {
                 },
                 ',' => return Ok(self.advance_with_tok(TokenType::Comma)),
                 '*' => return Ok(self.advance_with_tok(TokenType::Star)),
-                '&' => return Ok(self.advance_with_tok(TokenType::Amp)),
+                '&' => {
+                    self.advance();
+                    if self.ch == '&' {
+                        return Ok(self.advance_with_tok(TokenType::And))
+                    } else {
+                        return Ok(Token::new(TokenType::Amp, "&".to_string(), self.line))
+                    }
+                },
+                '|' => {
+                    self.advance();
+                    if self.ch == '|' {
+                        return Ok(self.advance_with_tok(TokenType::Or))
+                    } else {
+                        return Err(Error::new(format!("unrecognized token '{}'.", self.ch), self.line))
+                    }
+                },
                 '+' => return Ok(self.advance_with_tok(TokenType::Plus)),
                 '-' => return Ok(self.advance_with_tok(TokenType::Minus)),
                 '/' => return Ok(self.advance_with_tok(TokenType::Div)),
