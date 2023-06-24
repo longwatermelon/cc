@@ -64,6 +64,17 @@ impl Token {
         )
     }
 
+    pub fn is_priority_binop(&self) -> bool {
+        matches!(self.ttype,
+            TokenType::Equal |
+            TokenType::Less |
+            TokenType::Greater |
+            TokenType::LessEqual |
+            TokenType::GreaterEqual |
+            TokenType::EqualCmp
+        )
+    }
+
     pub fn is_unop(&self) -> bool {
         matches!(self.ttype,
             TokenType::Star |

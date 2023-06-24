@@ -264,7 +264,7 @@ impl Parser {
         self.expect(btype)?;
 
         let l: Node = self.prev_expr.clone();
-        let r: Node = self.parse_expr(true)?.unwrap();
+        let r: Node = self.parse_expr(!self.prev.is_priority_binop())?.unwrap();
 
         let n: Node = Node::new(NodeVariant::Binop { btype, l, r },line);
 
