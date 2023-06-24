@@ -2,15 +2,19 @@ use crate::error::Error;
 use crate::lexer::TokenType;
 
 #[derive(Clone, Debug)]
-pub enum DtypeVariant {
+pub enum Dtype {
     Int,
     Char
 }
 
-#[derive(Clone, Debug)]
-pub struct Dtype {
-    variant: DtypeVariant,
-    indirection: Vec<char>
+impl Dtype {
+    pub fn new(dtype: String) -> Result<Self, Error> {
+        match dtype.as_str() {
+            "int" => Ok(Dtype::Int),
+            "char" => Ok(Dtype::Char),
+            _ => Err(Error::new(format!("{} is not a valid data type.", dtype), 0))
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -35,18 +39,13 @@ pub enum NodeVariant {
         body: Node,
         rtype: Dtype
     },
-    Param {
-        name: String,
-        dtype: Dtype
-    },
     Vardef {
-        name: String,
+        var: Node,
         value: Node,
         dtype: Dtype
     },
     Var {
-        name: String,
-        indirection: Vec<char>
+        name: String
     },
     Assign {
         l: Node,
@@ -63,6 +62,12 @@ pub enum NodeVariant {
         btype: TokenType,
         l: Node,
         r: Node
+    },
+    Ref {
+        value: Node
+    },
+    Deref {
+        value: Node
     }
 }
 
@@ -72,23 +77,17 @@ pub struct Node {
     pub line: usize
 }
 
-impl Dtype {
-    pub fn new(dtype: String, indirection: Vec<char>) -> Result<Self, Error> {
-        Ok(Self { variant: Dtype::str2variant(dtype)?, indirection })
-    }
-
-    pub fn str2variant(s: String) -> Result<DtypeVariant, Error> {
-        match s.as_str() {
-            "int" => Ok(DtypeVariant::Int),
-            "char" => Ok(DtypeVariant::Char),
-            _ => Err(Error::new(format!("{} is not a valid data type.", s), 0))
-        }
-    }
-}
-
 impl Node {
     pub fn new(variant: NodeVariant, line: usize) -> Self {
         Self { variant: Box::new(variant), line }
+    }
+
+    pub fn var_name(&self) -> String {
+        match self.variant.as_ref() {
+            NodeVariant::Ref { value } | NodeVariant::Deref { value } => value.var_name(),
+            NodeVariant::Var { name } => name.clone(),
+            _ => panic!()
+        }
     }
 }
 

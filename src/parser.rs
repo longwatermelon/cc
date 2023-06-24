@@ -54,8 +54,8 @@ impl Parser {
             Ok(())
         } else {
             Err(Error::new(format!(
-                "expected token type {:?}, got {:?}.",
-                ttype, self.curr.ttype
+                "expected token type {:?}, got {:?}.\nBacktrace:\n{}",
+                ttype, self.curr.ttype, std::backtrace::Backtrace::capture()
             ), self.curr.line))
         }
     }
@@ -65,7 +65,8 @@ impl Parser {
             TokenType::Str => self.parse_str()?,
             TokenType::Int => self.parse_int()?,
             TokenType::Id => self.parse_id()?,
-            TokenType::Star | TokenType::Amp => self.parse_var()?,
+            TokenType::Star => self.parse_deref()?,
+            TokenType::Amp => self.parse_ref()?,
             TokenType::Lbrace => {
                 self.expect(TokenType::Lbrace)?;
                 let node = self.parse()?;
@@ -129,8 +130,6 @@ impl Parser {
                 None => break
             };
 
-            println!("{}", self.curr.value);
-
             if self.curr.ttype != TokenType::Rparen {
                 self.expect(TokenType::Comma)?;
             } else {
@@ -173,73 +172,54 @@ impl Parser {
     }
 
     fn parse_var(&mut self) -> Result<Node, Error> {
-        // Start on indirection, or name if indirection is inapplicable
-        // begin_tok is either a type or something meaningless, only used for checking if vardef
-        let begin_tok: String = self.curr.value.clone();
-        let next_type: TokenType = self.lexer.peek(1)?.ttype;
-        // terrible hack
-        if self.curr.ttype == TokenType::Id && (
-            next_type == TokenType::Id || 
-            next_type == TokenType::Star ||
-            next_type == TokenType::Amp ||
-            next_type == TokenType::Equal
-        ) {
-            self.expect(TokenType::Id)?;
-        }
-
-        let indirection: Vec<char> = self.parse_indirection();
+        // Start on name
         let name: String = self.curr.value.clone();
-        let line: usize = self.curr.line;
 
-        let node_var: Node = Node::new(NodeVariant::Var { name: name.clone(), indirection: indirection.clone() }, line);
-
-        // Vardefs always start with a type
-        if Dtype::str2variant(begin_tok.clone()).is_ok() {
-            self.parse_vardef(Dtype::new(begin_tok, indirection)?)
+        if Dtype::new(name.clone()).is_ok() {
+            self.parse_vardef()
         } else {
-            if !indirection.is_empty() {
-                self.expect(TokenType::Id)?;
-            }
+            self.expect(TokenType::Id)?;
 
-            match self.curr.ttype {
-                TokenType::Equal => {
-                    self.parse_assign(indirection)
-                },
-                _ => {
-                    if indirection.is_empty() {
-                        self.expect(TokenType::Id)?;
-                    }
-                    Ok(node_var)
-                }
+            if self.curr.ttype == TokenType::Equal && !self.ignore_ops {
+                self.parse_assign()
+            } else {
+                Ok(Node::new(NodeVariant::Var { name }, self.curr.line))
             }
         }
     }
 
-    fn parse_indirection(&mut self) -> Vec<char> {
-        let mut res: Vec<char> = Vec::new();
-        while self.curr.ttype == TokenType::Star || self.curr.ttype == TokenType::Amp {
-            res.push(self.curr.value.chars().nth(0).unwrap());
-            self.expect(self.curr.ttype).unwrap();
-        }
-
-        res
+    fn parse_ref(&mut self) -> Result<Node, Error> {
+        self.expect(TokenType::Amp)?;
+        Ok(Node::new(NodeVariant::Ref { value: self.parse_expr()?.unwrap() }, self.curr.line))
     }
 
-    fn parse_vardef(&mut self, dtype: Dtype) -> Result<Node, Error> {
-        let name: String = self.curr.value.clone();
-        let line: usize = self.curr.line;
+    fn parse_deref(&mut self) -> Result<Node, Error> {
+        self.expect(TokenType::Star)?;
+        Ok(Node::new(NodeVariant::Deref { value: self.parse_expr()?.unwrap() }, self.curr.line))
+    }
+
+    fn parse_vardef(&mut self) -> Result<Node, Error> {
+        let dtype: Dtype = Dtype::new(self.curr.value.clone())?;
         self.expect(TokenType::Id)?;
+
+        let var: Node = match self.curr.ttype {
+            TokenType::Id => self.parse_var()?,
+            TokenType::Star => self.parse_deref()?,
+            TokenType::Amp => self.parse_ref()?,
+            _ => panic!()
+        };
+        let line: usize = self.curr.line;
 
         match self.curr.ttype {
             TokenType::Equal => {
                 self.expect(TokenType::Equal)?;
                 Ok(
                     Node::new(NodeVariant::Vardef {
-                        name: name.clone(),
+                        var: var.clone(),
                         value:
                             match self.parse_expr()? {
                                 Some(x) => x,
-                                None => return Err(Error::new(format!("no expression in definition of '{}'.", name), line))
+                                None => return Err(Error::new(format!("no expression in definition of '{}'.", var.var_name()), line))
                             },
                         dtype
                         }, line
@@ -249,13 +229,14 @@ impl Parser {
             TokenType::Lparen => {
                 self.parse_fdef(dtype)
             },
-            _ => Ok(Node::new(NodeVariant::Param { name, dtype }, line))
+            // _ => Ok(Node::new(NodeVariant::Param { name: var.var_name(), dtype }, line))
+            _ => Ok(Node::new(NodeVariant::Vardef { var, value: Node::new(NodeVariant::Noop, 0), dtype }, line))
         }
     }
 
-    fn parse_assign(&mut self, indirection: Vec<char>) -> Result<Node, Error> {
+    fn parse_assign(&mut self) -> Result<Node, Error> {
         let line: usize = self.curr.line;
-        let l: Node = Node::new(NodeVariant::Var { name: self.prev.value.clone(), indirection }, line);
+        let l: Node = Node::new(NodeVariant::Var { name: self.prev.value.clone() }, line);
         self.expect(TokenType::Equal)?;
         let r: Node = Node::new(self.parse_expr()?.unwrap().variant.as_ref().clone(), line);
 
