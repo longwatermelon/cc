@@ -68,10 +68,26 @@ impl Parser {
             TokenType::Star => self.parse_deref()?,
             TokenType::Amp => self.parse_ref()?,
             TokenType::Lbrace => {
+                let prev: bool = self.ignore_ops;
+                self.ignore_ops = false;
+
                 self.expect(TokenType::Lbrace)?;
                 let node = self.parse()?;
                 self.expect(TokenType::Rbrace)?;
+
+                self.ignore_ops = prev;
                 node
+            },
+            TokenType::Lparen => {
+                let prev: bool = self.ignore_ops;
+                self.ignore_ops = false;
+
+                self.expect(TokenType::Lparen)?;
+                let expr = self.parse_expr()?.unwrap();
+                self.expect(TokenType::Rparen)?;
+
+                self.ignore_ops = prev;
+                expr
             },
             _ => return Ok(None)
         };
