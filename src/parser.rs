@@ -35,7 +35,9 @@ impl Parser {
                 }
             );
 
-            if self.prev.ttype != TokenType::Rbrace {
+            println!("here");
+
+            if self.prev.ttype != TokenType::Rbrace && self.prev.ttype != TokenType::Semi {
                 self.expect(TokenType::Semi)?;
             }
         }
@@ -61,6 +63,10 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Result<Option<Node>, Error> {
+        while self.curr.ttype == TokenType::Semi {
+            self.expect(TokenType::Semi)?;
+        }
+
         let n: Node = match self.curr.ttype {
             TokenType::Str => self.parse_str()?,
             TokenType::Int => self.parse_int()?,
@@ -124,6 +130,8 @@ impl Parser {
             self.parse_if()
         } else if self.curr.value == "return" {
             self.parse_return()
+        } else if self.curr.value == "struct" {
+            self.parse_struct()
         } else {
             match self.lexer.peek(1)?.ttype {
                 TokenType::Lparen => self.parse_fcall(),
@@ -215,7 +223,12 @@ impl Parser {
     }
 
     fn parse_vardef(&mut self) -> Result<Node, Error> {
-        let dtype: Dtype = Dtype::new(self.curr.value.clone())?;
+        let mut dtype: Dtype = Dtype::new(self.curr.value.clone())?;
+        if let Dtype::Struct { name } = &mut dtype {
+            self.expect(self.curr.ttype)?;
+            *name = self.curr.value.clone();
+        }
+
         self.expect(TokenType::Id)?;
 
         let var: Node = match self.curr.ttype {
@@ -291,6 +304,37 @@ impl Parser {
         } else {
             Ok(n)
         }
+    }
+
+    fn parse_struct(&mut self) -> Result<Node, Error> {
+        if self.lexer.peek(2)?.ttype == TokenType::Lbrace {
+            self.parse_struct_def()
+        } else {
+            self.parse_vardef()
+        }
+    }
+
+    fn parse_struct_def(&mut self) -> Result<Node, Error> {
+        let line: usize = self.curr.line;
+        self.expect(TokenType::Id)?; // struct keyword
+
+        let name: String = self.curr.value.clone();
+        self.expect(TokenType::Id)?; // struct name
+
+        self.expect(TokenType::Lbrace)?;
+        let mut fields: Vec<Node> = Vec::new();
+        loop {
+            if let Some(expr) = self.parse_expr()? {
+                fields.push(expr);
+                self.expect(TokenType::Semi)?;
+            } else {
+                break;
+            }
+        }
+        self.expect(TokenType::Rbrace)?;
+        self.expect(TokenType::Semi)?;
+
+        Ok(Node::new(NodeVariant::Struct { name, fields }, line))
     }
 }
 

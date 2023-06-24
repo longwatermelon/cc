@@ -4,14 +4,17 @@ use crate::lexer::TokenType;
 #[derive(Clone, Debug)]
 pub enum Dtype {
     Int,
-    Char
+    Char,
+    Struct { name: String }
 }
 
 impl Dtype {
+    /// Does not fill out enum variant fields, only determines the enum variant type
     pub fn new(dtype: String) -> Result<Self, Error> {
         match dtype.as_str() {
             "int" => Ok(Dtype::Int),
             "char" => Ok(Dtype::Char),
+            "struct" => Ok(Dtype::Struct { name: String::new() }),
             _ => Err(Error::new(format!("{} is not a valid data type.", dtype), 0))
         }
     }
@@ -68,6 +71,10 @@ pub enum NodeVariant {
     },
     Deref {
         value: Node
+    },
+    Struct {
+        name: String,
+        fields: Vec<Node>
     }
 }
 
