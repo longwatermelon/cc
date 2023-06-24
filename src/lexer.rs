@@ -62,6 +62,13 @@ impl Token {
             TokenType::Dot
         )
     }
+
+    pub fn is_unop(&self) -> bool {
+        matches!(self.ttype,
+            TokenType::Star |
+            TokenType::Amp
+        )
+    }
 }
 
 impl Lexer {

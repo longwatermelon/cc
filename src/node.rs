@@ -66,11 +66,9 @@ pub enum NodeVariant {
         l: Node,
         r: Node
     },
-    Ref {
-        value: Node
-    },
-    Deref {
-        value: Node
+    Unop {
+        utype: TokenType,
+        r: Node
     },
     Struct {
         name: String,
@@ -91,7 +89,7 @@ impl Node {
 
     pub fn var_name(&self) -> String {
         match self.variant.as_ref() {
-            NodeVariant::Ref { value } | NodeVariant::Deref { value } => value.var_name(),
+            NodeVariant::Unop { r, .. } => r.var_name(),
             NodeVariant::Var { name } => name.clone(),
             _ => panic!()
         }
