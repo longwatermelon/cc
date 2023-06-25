@@ -153,7 +153,10 @@ impl Preprocessor {
             }
 
             self.pending_ifs.pop();
-            self.defs.pop();
+
+            // Move all defs in current scope up one scope, so they're globally accessible
+            let last: Vec<Definition> = self.defs.pop().unwrap();
+            self.defs.iter_mut().last().unwrap().extend(last);
         } else {
             eprintln!("preprocessing error: endif without if");
             std::process::exit(1);
