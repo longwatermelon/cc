@@ -116,20 +116,17 @@ impl Parser {
     }
 
     fn parse_id(&mut self) -> Result<Node, Error> {
-        if self.curr.value == "if" {
-            self.parse_if()
-        } else if self.curr.value == "return" {
-            self.parse_return()
-        } else if self.curr.value == "struct" {
-            self.parse_struct()
-        } else if self.curr.value == "for" {
-            self.parse_for()
-        } else if self.curr.value == "while" {
-            self.parse_while()
-        } else {
-            match self.lexer.peek(1)?.ttype {
-                TokenType::Lparen => self.parse_fcall(),
-                                _ => self.parse_var()
+        match self.curr.value.as_str() {
+            "if" => self.parse_if(),
+            "return" => self.parse_return(),
+            "struct" => self.parse_struct(),
+            "for" => self.parse_for(),
+            "while" => self.parse_while(),
+            _ => {
+                match self.lexer.peek(1)?.ttype {
+                    TokenType::Lparen => self.parse_fcall(),
+                                    _ => self.parse_var()
+                }
             }
         }
     }
