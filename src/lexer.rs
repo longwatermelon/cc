@@ -23,6 +23,7 @@ pub enum TokenType {
     LessEqual,
     GreaterEqual,
     Dot,
+    Arrow,
     And,
     Or,
     Eof
@@ -58,7 +59,8 @@ impl TokenType {
             TokenType::Dot |
             TokenType::Equal |
             TokenType::And |
-            TokenType::Or
+            TokenType::Or |
+            TokenType::Arrow
         )
     }
 
@@ -74,6 +76,7 @@ impl TokenType {
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
             TokenType::Dot |
+            TokenType::Arrow |
             TokenType::Equal => 1,
             TokenType::And |
             TokenType::Or => 0,
@@ -158,7 +161,14 @@ impl Lexer {
                     }
                 },
                 '+' => return Ok(self.advance_with_tok(TokenType::Plus)),
-                '-' => return Ok(self.advance_with_tok(TokenType::Minus)),
+                '-' => {
+                    self.advance();
+                    if self.ch == '>' {
+                        return Ok(self.advance_with_tok(TokenType::Arrow))
+                    } else {
+                        return Ok(Token::new(TokenType::Minus, "-".to_string(), self.line))
+                    }
+                },
                 '/' => return Ok(self.advance_with_tok(TokenType::Div)),
                 '<' => {
                     self.advance();
