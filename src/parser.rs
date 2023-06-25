@@ -122,8 +122,10 @@ impl Parser {
             self.parse_return()
         } else if self.curr.value == "struct" {
             self.parse_struct()
-        } else if self.curr.value == "for"{
+        } else if self.curr.value == "for" {
             self.parse_for()
+        } else if self.curr.value == "while" {
+            self.parse_while()
         } else {
             match self.lexer.peek(1)?.ttype {
                 TokenType::Lparen => self.parse_fcall(),
@@ -328,6 +330,18 @@ impl Parser {
         let body: Node = self.parse_expr(false)?.unwrap();
 
         Ok(Node::new(NodeVariant::For { init, cond, inc, body }, line))
+    }
+
+    fn parse_while(&mut self) -> Result<Node, Error> {
+        let line: usize = self.curr.line;
+        self.expect(TokenType::Id)?;
+
+        self.expect(TokenType::Lparen)?;
+        let cond: Node = self.parse_expr(false)?.unwrap();
+        self.expect(TokenType::Rparen)?;
+
+        let body: Node = self.parse_expr(false)?.unwrap();
+        Ok(Node::new(NodeVariant::While { cond, body }, line))
     }
 }
 

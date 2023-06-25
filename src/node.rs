@@ -75,6 +75,10 @@ pub enum NodeVariant {
         cond: Node,
         inc: Node,
         body: Node
+    },
+    While {
+        cond: Node,
+        body: Node
     }
 }
 
