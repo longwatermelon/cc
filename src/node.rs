@@ -26,6 +26,24 @@ impl DtypeVariant {
             _ => Err(Error::new(format!("{} is not a valid data type.", dtype), 0))
         }
     }
+
+    pub fn num_bytes(&self) -> i32 {
+        match self {
+            DtypeVariant::Int => 4,
+            DtypeVariant::Char => 1,
+            DtypeVariant::Void => 0,
+            DtypeVariant::Struct {..} => todo!()
+        }
+    }
+
+    pub fn deref(&self) -> String {
+        match self.num_bytes() {
+            1 => "BYTE PTR",
+            4 => "DWORD PTR",
+            8 => "QWORD PTR",
+            _ => panic!("DtypeVariant::deref invalid size of {}", self.num_bytes())
+        }.to_string()
+    }
 }
 
 impl Dtype {
@@ -45,6 +63,9 @@ pub enum NodeVariant {
     },
     Int {
         value: i32
+    },
+    Char {
+        value: char
     },
     Fcall {
         name: String,
@@ -115,7 +136,28 @@ impl Node {
         match self.variant.as_ref() {
             NodeVariant::Unop { r, .. } => r.var_name(),
             NodeVariant::Var { name } => name.clone(),
-            _ => panic!()
+            _ => panic!("var_name received {:?}", self.variant)
+        }
+    }
+
+    pub fn vardef_name(&self) -> String {
+        match self.variant.as_ref() {
+            NodeVariant::Vardef { var, .. } => var.var_name(),
+            _ => panic!("vardef_name received {:?}", self.variant)
+        }
+    }
+
+    pub fn vardef_dtype(&self) -> Dtype {
+        match self.variant.as_ref() {
+            NodeVariant::Vardef { dtype, .. } => dtype.clone(),
+            _ => panic!("vardef_dtype received {:?}", self.variant)
+        }
+    }
+
+    pub fn vardef_value(&self) -> Node {
+        match self.variant.as_ref() {
+            NodeVariant::Vardef { value, .. } => value.clone(),
+            _ => panic!("vardef_value received {:?}", self.variant)
         }
     }
 }

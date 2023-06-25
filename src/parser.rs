@@ -67,6 +67,7 @@ impl Parser {
         let mut n: Option<Node> = match self.curr.ttype {
             TokenType::Str => Some(self.parse_str()?),
             TokenType::Int => Some(self.parse_int()?),
+            TokenType::Char => Some(self.parse_char()?),
             TokenType::Id => Some(self.parse_id()?),
             TokenType::Lbrace => {
                 self.expect(TokenType::Lbrace)?;
@@ -122,6 +123,11 @@ impl Parser {
     fn parse_str(&mut self) -> Result<Node, Error> {
         self.expect(TokenType::Str)?;
         Ok(Node::new(NodeVariant::Str { value: self.prev.value.clone() }, self.curr.line))
+    }
+
+    fn parse_char(&mut self) -> Result<Node, Error> {
+        self.expect(TokenType::Char)?;
+        Ok(Node::new(NodeVariant::Char { value: self.prev.value.clone().chars().next().unwrap() }, self.curr.line))
     }
 
     fn parse_dtype(&mut self) -> Result<Dtype, Error> {

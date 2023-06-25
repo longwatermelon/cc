@@ -5,6 +5,7 @@ pub enum TokenType {
     Id,
     Str,
     Int,
+    Char,
     Semi,
     Lparen,
     Rparen,
@@ -126,6 +127,14 @@ impl Lexer {
 
             if self.ch == '"' {
                 return Ok(Token::new(TokenType::Str, self.collect_str(), self.line));
+            }
+
+            if self.ch == '\'' {
+                self.advance();
+                let ch: char = self.ch;
+                self.advance();
+                self.advance();
+                return Ok(Token::new(TokenType::Char, ch.to_string(), self.line));
             }
 
             match self.ch {

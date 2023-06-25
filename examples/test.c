@@ -1,6 +1,6 @@
 int main()
 {
-    "test";
-    return 10;
+    int x = 1;
+    char y = 'c';
 }
 

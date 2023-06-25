@@ -4,6 +4,7 @@ mod node;
 mod parser;
 mod preprocess;
 mod gen;
+mod scope;
 
 use error::Error;
 use parser::Parser;
@@ -49,7 +50,6 @@ fn main() {
     f.write_all(result.as_bytes()).expect("Unable to write to file 'a.s'.");
 
     // Assemble
-    Command::new("sh").args(&["-c", "nasm -felf64 a.s && ld *.o"]).output().unwrap();
-    fs::remove_file("a.o").unwrap();
+    Command::new("sh").args(&["-c", "nasm -felf64 a.s && ld *.o && rm *.o"]).output().unwrap();
 }
 
