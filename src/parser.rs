@@ -76,12 +76,10 @@ impl Parser {
                 Some(node)
             },
             TokenType::Lparen => {
-                // if self.lexer.peek(1).is_ok_and(|x| x.value == "struct") &&
-                //     self.lexer.peek(2).is_ok_and(|x| x.ttype == TokenType::Id) &&
-                //         self.lexer.peek(3).is_ok_and(|x| x.ttype == TokenType::Rparen) &&
-                //             self.lexer.peek(4).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
                 let mut copy: Parser = self.clone();
-                if copy.parse_dtype().is_ok() && copy.curr.ttype == TokenType::Rparen && copy.lexer.peek(1).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
+                copy.expect(TokenType::Lparen)?;
+                let dtype: Result<Dtype, Error> = copy.parse_dtype();
+                if dtype.is_ok() && copy.curr.ttype == TokenType::Rparen && copy.lexer.peek(1).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
                     Some(self.parse_init_list()?)
                 } else {
                     self.expect(TokenType::Lparen)?;
@@ -131,6 +129,7 @@ impl Parser {
         self.expect(TokenType::Id)?;
         if let DtypeVariant::Struct { name } = &mut dtype.variant {
             *name = self.curr.value.clone();
+            self.expect(TokenType::Id)?;
         }
 
         while self.curr.ttype == TokenType::Amp || self.curr.ttype == TokenType::Star {
