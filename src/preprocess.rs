@@ -6,7 +6,13 @@ struct Definition {
     expr: Option<String>
 }
 
+enum IfType {
+    Ifndef,
+    Ifdef
+}
+
 struct IfPair {
+    variant: IfType,
     if_expr: String,
     start: usize
 }
@@ -24,8 +30,8 @@ impl Definition {
 }
 
 impl IfPair {
-    fn new(expr: String, start: usize) -> Self {
-        Self { if_expr: expr, start }
+    fn new(variant: IfType, expr: String, start: usize) -> Self {
+        Self { variant, if_expr: expr, start }
     }
 }
 
@@ -56,7 +62,8 @@ impl Preprocessor {
                 match cmd.as_str() {
                     "include" => return self.process_include(start, i),
                     "define" => return self.process_define(start, i),
-                    "ifndef" => return self.process_ifndef(start, i),
+                    "ifndef" => return self.process_if(start, i, IfType::Ifndef),
+                    "ifdef" => return self.process_if(start, i, IfType::Ifdef),
                     "endif" => return self.process_endif(start, i),
                     _ => panic!()
                 }
@@ -118,7 +125,7 @@ impl Preprocessor {
         self.prog.replace_range(start..index, "");
     }
 
-    fn process_ifndef(&mut self, start: usize, mut index: usize) {
+    fn process_if(&mut self, start: usize, mut index: usize, variant: IfType) {
         self.defs.push(Vec::new());
         while self.prog.chars().nth(index).unwrap().is_whitespace() {
             index += 1;
@@ -130,7 +137,7 @@ impl Preprocessor {
             index += 1;
         }
 
-        self.pending_ifs.push(IfPair::new(id, start));
+        self.pending_ifs.push(IfPair::new(variant, id, start));
         self.prog.replace_range(start..index, "");
     }
 
@@ -148,13 +155,17 @@ impl Preprocessor {
                 }
             }
 
-            if exists {
+            if match last.variant {
+                IfType::Ifndef => exists,
+                IfType::Ifdef => !exists
+            } {
+                // Remove contents
                 self.prog.replace_range(last.start..start, "");
             }
 
             self.pending_ifs.pop();
 
-            // Move all defs in current scope up one scope, so they're globally accessible
+            // Move all defs in current scope up one layer, so they're globally accessible
             let last: Vec<Definition> = self.defs.pop().unwrap();
             self.defs.iter_mut().last().unwrap().extend(last);
         } else {
