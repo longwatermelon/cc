@@ -1,14 +1,20 @@
 use std::fs;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 struct Definition {
     name: String,
     expr: Option<String>
 }
 
+struct IfPair {
+    if_expr: String,
+    start: usize
+}
+
 pub struct Preprocessor {
     prog: String,
-    defs: Vec<Definition>
+    defs: Vec<Vec<Definition>>,
+    pending_ifs: Vec<IfPair>
 }
 
 impl Definition {
@@ -17,9 +23,15 @@ impl Definition {
     }
 }
 
+impl IfPair {
+    fn new(expr: String, start: usize) -> Self {
+        Self { if_expr: expr, start }
+    }
+}
+
 impl Preprocessor {
     pub fn new(prog: String) -> Self {
-        Self { prog, defs: Vec::new() }
+        Self { prog, defs: vec![Vec::new()], pending_ifs: Vec::new() }
     }
 
     pub fn preprocess(&mut self) {
@@ -44,6 +56,8 @@ impl Preprocessor {
                 match cmd.as_str() {
                     "include" => return self.process_include(start, i),
                     "define" => return self.process_define(start, i),
+                    "ifndef" => return self.process_ifndef(start, i),
+                    "endif" => return self.process_endif(start, i),
                     _ => panic!()
                 }
             }
@@ -51,9 +65,11 @@ impl Preprocessor {
     }
 
     fn replace_defs(&mut self) {
-        for def in self.defs.clone() {
-            if let Some(expr) = def.expr {
-                self.prog = self.prog.replace(def.name.as_str(), expr.as_str());
+        for layer in self.defs.clone() {
+            for def in &layer {
+                if let Some(expr) = &def.expr {
+                    self.prog = self.prog.replace(def.name.as_str(), expr.as_str());
+                }
             }
         }
     }
@@ -85,18 +101,63 @@ impl Preprocessor {
             index += 1;
         }
 
+        let mut expr: String = String::new();
+        if self.prog.chars().nth(index).unwrap() != '\n' {
+            while self.prog.chars().nth(index).unwrap().is_whitespace() {
+                index += 1;
+            }
+
+            while self.prog.chars().nth(index).unwrap() != '\n' {
+                expr.push(self.prog.chars().nth(index).unwrap());
+                index += 1;
+            }
+        }
+
+        // self.defs is guaranteed to have last element
+        self.defs.iter_mut().last().unwrap().push(Definition::new(id, if expr.is_empty() { None } else { Some(expr) }));
+        self.prog.replace_range(start..index, "");
+    }
+
+    fn process_ifndef(&mut self, start: usize, mut index: usize) {
+        self.defs.push(Vec::new());
         while self.prog.chars().nth(index).unwrap().is_whitespace() {
             index += 1;
         }
 
-        let mut expr: String = String::new();
-        while self.prog.chars().nth(index).unwrap() != '\n' {
-            expr.push(self.prog.chars().nth(index).unwrap());
+        let mut id: String = String::new();
+        while !self.prog.chars().nth(index).unwrap().is_whitespace() {
+            id.push(self.prog.chars().nth(index).unwrap());
             index += 1;
         }
 
-        self.defs.push(Definition::new(id, if expr.is_empty() { None } else { Some(expr) }));
+        self.pending_ifs.push(IfPair::new(id, start));
         self.prog.replace_range(start..index, "");
+    }
+
+    fn process_endif(&mut self, start: usize, index: usize) {
+        self.prog.replace_range(start..index, "");
+        if let Some(last) = self.pending_ifs.last() {
+            // For ifndef
+            let mut exists: bool = false;
+            for l in 0..self.defs.len() - 1 {
+                for def in &self.defs[l] {
+                    if def.name == last.if_expr {
+                        exists = true;
+                        break;
+                    }
+                }
+            }
+
+            if exists {
+                self.prog.replace_range(last.start..start, "");
+            }
+
+            self.pending_ifs.pop();
+            self.defs.pop();
+        } else {
+            eprintln!("preprocessing error: endif without if");
+            std::process::exit(1);
+        }
     }
 
     pub fn result(&self) -> String {
