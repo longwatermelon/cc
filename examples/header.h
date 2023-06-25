@@ -1,6 +1,9 @@
 #ifndef HEADER_H
 #define HEADER_H
 
-1;
+struct A {
+    int a;
+    char b;
+};
 
 #endif

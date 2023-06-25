@@ -79,6 +79,9 @@ pub enum NodeVariant {
     While {
         cond: Node,
         body: Node
+    },
+    InitList {
+        fields: Vec<(String, Node)>
     }
 }
 

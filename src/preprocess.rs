@@ -74,9 +74,7 @@ impl Preprocessor {
     fn replace_defs(&mut self) {
         for layer in self.defs.clone() {
             for def in &layer {
-                if let Some(expr) = &def.expr {
-                    self.prog = self.prog.replace(def.name.as_str(), expr.as_str());
-                }
+                self.prog = self.prog.replace(def.name.as_str(), if let Some(id) = def.expr.clone() { id } else { String::new() }.as_str());
             }
         }
     }

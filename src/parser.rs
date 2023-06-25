@@ -75,11 +75,19 @@ impl Parser {
                 Some(node)
             },
             TokenType::Lparen => {
-                self.expect(TokenType::Lparen)?;
-                let expr = self.parse_expr(false)?.unwrap();
-                self.expect(TokenType::Rparen)?;
+                if self.lexer.peek(1).is_ok_and(|x| x.value == "struct") &&
+                    self.lexer.peek(2).is_ok_and(|x| x.ttype == TokenType::Id) &&
+                        self.lexer.peek(3).is_ok_and(|x| x.ttype == TokenType::Rparen) &&
+                            self.lexer.peek(4).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
+                    Some(self.parse_init_list()?)
+                } else {
+                    self.expect(TokenType::Lparen)?;
 
-                Some(expr)
+                    let expr = self.parse_expr(false)?.unwrap();
+                    self.expect(TokenType::Rparen)?;
+
+                    Some(expr)
+                }
             },
             _ => None
         };
@@ -344,6 +352,41 @@ impl Parser {
 
         let body: Node = self.parse_expr(false)?.unwrap();
         Ok(Node::new(NodeVariant::While { cond, body }, line))
+    }
+
+    fn parse_init_list(&mut self) -> Result<Node, Error> {
+        let line: usize = self.curr.line;
+
+        self.expect(TokenType::Lparen)?;
+        let mut dtype: Dtype = Dtype::new(self.curr.value.clone())?;
+        self.expect(TokenType::Id)?; // struct
+        if let Dtype::Struct { name } = &mut dtype {
+            *name = self.curr.value.clone();
+        } else {
+            return Err(Error::new("only structs can use initializer lists.".to_string(), line))
+        }
+        self.expect(TokenType::Id)?; // struct name
+        self.expect(TokenType::Rparen)?;
+
+        self.expect(TokenType::Lbrace)?;
+        let mut fields: Vec<(String, Node)> = Vec::new();
+        loop {
+            self.expect(TokenType::Dot)?;
+            let id: String = self.curr.value.clone();
+            self.expect(TokenType::Id)?;
+            self.expect(TokenType::Equal)?;
+            let expr: Node = self.parse_expr(false)?.unwrap();
+            fields.push((id, expr));
+
+            if self.curr.ttype != TokenType::Rbrace {
+                self.expect(TokenType::Comma)?;
+            } else {
+                break;
+            }
+        }
+        self.expect(TokenType::Rbrace)?;
+
+        Ok(Node::new(NodeVariant::InitList { fields }, line))
     }
 }
 

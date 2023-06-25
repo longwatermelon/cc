@@ -1,9 +1,7 @@
 #include "examples/header.h"
-#include "examples/header.h"
-#include "examples/header.h"
-#include "examples/header.h"
 
-#ifdef HEADER_H
-2;
-#endif
+int main() {
+    f((struct A){ .a = 1, .b = 2 });
+    return 0;
+}
 
