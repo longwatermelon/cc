@@ -1,5 +1,6 @@
 use std::fs;
 
+#[derive(Clone)]
 struct Definition {
     name: String,
     expr: Option<String>
@@ -25,10 +26,8 @@ impl Preprocessor {
         while self.prog.contains('#') {
             self.preprocess_once();
         }
-    }
 
-    pub fn result(&self) -> String {
-        self.prog.clone()
+        self.replace_defs();
     }
 
     fn preprocess_once(&mut self) {
@@ -44,8 +43,17 @@ impl Preprocessor {
 
                 match cmd.as_str() {
                     "include" => return self.process_include(start, i),
+                    "define" => return self.process_define(start, i),
                     _ => panic!()
                 }
+            }
+        }
+    }
+
+    fn replace_defs(&mut self) {
+        for def in self.defs.clone() {
+            if let Some(expr) = def.expr {
+                self.prog = self.prog.replace(def.name.as_str(), expr.as_str());
             }
         }
     }
@@ -64,6 +72,35 @@ impl Preprocessor {
         index += 1;
 
         self.prog.replace_range(start..index, fs::read_to_string(path.as_str()).unwrap().as_str());
+    }
+
+    fn process_define(&mut self, start: usize, mut index: usize) {
+        while self.prog.chars().nth(index).unwrap().is_whitespace() {
+            index += 1;
+        }
+
+        let mut id: String = String::new();
+        while !self.prog.chars().nth(index).unwrap().is_whitespace() {
+            id.push(self.prog.chars().nth(index).unwrap());
+            index += 1;
+        }
+
+        while self.prog.chars().nth(index).unwrap().is_whitespace() {
+            index += 1;
+        }
+
+        let mut expr: String = String::new();
+        while self.prog.chars().nth(index).unwrap() != '\n' {
+            expr.push(self.prog.chars().nth(index).unwrap());
+            index += 1;
+        }
+
+        self.defs.push(Definition::new(id, if expr.is_empty() { None } else { Some(expr) }));
+        self.prog.replace_range(start..index, "");
+    }
+
+    pub fn result(&self) -> String {
+        self.prog.clone()
     }
 }
 
