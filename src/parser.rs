@@ -174,9 +174,14 @@ impl Parser {
         }
         self.expect(TokenType::Rparen)?;
 
-        self.expect(TokenType::Lbrace)?;
-        let body: Node = self.parse()?;
-        self.expect(TokenType::Rbrace)?;
+        let body: Node = if self.curr.ttype == TokenType::Semi {
+            Node::new(NodeVariant::Noop, 0)
+        } else {
+            self.expect(TokenType::Lbrace)?;
+            let b: Node = self.parse()?;
+            self.expect(TokenType::Rbrace)?;
+            b
+        };
 
         Ok(Node::new(NodeVariant::Fdef { name, params, body, rtype }, line))
     }
