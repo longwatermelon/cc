@@ -2,6 +2,7 @@ mod error;
 mod lexer;
 mod node;
 mod parser;
+mod preprocess;
 
 use error::Error;
 use parser::Parser;
@@ -16,8 +17,9 @@ fn main() {
     }
 
     let prog: String = fs::read_to_string(args[0].as_str()).expect("Couldn't read file examples/test.c.");
+    let processed: String = preprocess::preprocess(prog);
 
-    let mut parser: Parser = Parser::new(prog).unwrap();
+    let mut parser: Parser = Parser::new(processed).unwrap();
     let root: Result<Node, Error> = parser.parse();
 
     match root {
