@@ -7,6 +7,7 @@ mod preprocess;
 use error::Error;
 use parser::Parser;
 use node::Node;
+use preprocess::Preprocessor;
 use std::fs;
 
 fn main() {
@@ -17,7 +18,9 @@ fn main() {
     }
 
     let prog: String = fs::read_to_string(args[0].as_str()).expect("Couldn't read file examples/test.c.");
-    let processed: String = preprocess::preprocess(prog);
+    let mut preprocessor: Preprocessor = Preprocessor::new(prog);
+    preprocessor.preprocess();
+    let processed: String = preprocessor.result();
 
     let mut parser: Parser = Parser::new(processed).unwrap();
     let root: Result<Node, Error> = parser.parse();
