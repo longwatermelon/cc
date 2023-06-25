@@ -43,15 +43,9 @@ pub struct Lexer {
     ch: char
 }
 
-impl Token {
-    pub fn new(ttype: TokenType, value: String, line: usize) -> Self {
-        Self {
-            ttype, value, line
-        }
-    }
-
+impl TokenType {
     pub fn is_binop(&self) -> bool {
-        matches!(self.ttype,
+        matches!(self,
             TokenType::Plus  |
             TokenType::Minus |
             TokenType::Star  |
@@ -68,24 +62,38 @@ impl Token {
         )
     }
 
-    pub fn is_priority_binop(&self) -> bool {
-        matches!(self.ttype,
-            TokenType::Equal |
-            TokenType::Less |
+    pub fn binop_weight(&self) -> i32 {
+        match self {
+            TokenType::Plus  |
+            TokenType::Minus |
+            TokenType::Star  |
+            TokenType::Div  => 2,
+            TokenType::Less  |
             TokenType::Greater |
             TokenType::LessEqual |
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
+            TokenType::Dot |
+            TokenType::Equal => 1,
             TokenType::And |
-            TokenType::Or
-        )
+            TokenType::Or => 0,
+            _ => panic!()
+        }
     }
 
     pub fn is_unop(&self) -> bool {
-        matches!(self.ttype,
+        matches!(self,
             TokenType::Star |
             TokenType::Amp
         )
+    }
+}
+
+impl Token {
+    pub fn new(ttype: TokenType, value: String, line: usize) -> Self {
+        Self {
+            ttype, value, line
+        }
     }
 }
 

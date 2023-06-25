@@ -84,7 +84,7 @@ impl Parser {
             _ => None
         };
 
-        if self.curr.is_unop() {
+        if self.curr.ttype.is_unop() {
             n = Some(self.parse_unop()?);
         }
 
@@ -93,7 +93,7 @@ impl Parser {
         }
 
         if !only_one {
-            if self.curr.is_binop() {
+            if self.curr.ttype.is_binop() {
                 return Ok(Some(self.parse_binop()?));
             }
         }
@@ -211,7 +211,7 @@ impl Parser {
 
         self.expect(TokenType::Id)?;
 
-        let var: Node = if self.curr.is_unop() {
+        let var: Node = if self.curr.ttype.is_unop() {
             self.parse_unop()?
         } else {
             self.parse_var()?
@@ -264,17 +264,47 @@ impl Parser {
         self.expect(btype)?;
 
         let l: Node = self.prev_expr.clone();
-        let r: Node = self.parse_expr(!self.prev.is_priority_binop())?.unwrap();
+        // Only parse expression between operators
+        let r: Node = self.parse_expr(true)?.unwrap();
 
-        let n: Node = Node::new(NodeVariant::Binop { btype, l, r },line);
+        let n: Node = Node::new(NodeVariant::Binop { btype, l: l.clone(), r }, line);
+        // self.binop_weights_rearrange(&mut n);
 
-        if self.curr.is_binop() {
-            self.prev_expr = n;
-            self.parse_binop()
+        if self.curr.ttype.is_binop() {
+            // curr has higher precedence than btype
+            if btype.binop_weight() < self.curr.ttype.binop_weight() {
+                // let r: Node = Node::new(NodeVariant::Binop { btype: (), l: (), r: self.parse_expr(false)?.unwrap() }, self.curr.line);
+                // Ok(Node::new(NodeVariant::Binop { btype: (), l: n.l, r: () }, self.curr.line))
+                Ok(Node::new(NodeVariant::Binop { btype, l, r: self.parse_expr(false)?.unwrap() }, self.curr.line))
+            } else {
+                self.prev_expr = n;
+                self.parse_binop()
+            }
         } else {
             Ok(n)
         }
     }
+
+    // fn binop_weights_rearrange(&self, root: &mut Node) {
+    //     let root_copy: Node = root.clone();
+    //     if let NodeVariant::Binop { btype, l: rootl, .. } = root.variant.as_mut() {
+    //         // If not binop, weight = 3, or highest precedence
+    //         // root.r doesn't need to be considered because it's not a binop by default
+    //         let lw: i32 = if let NodeVariant::Binop { btype, .. } = rootl.variant.as_ref() { btype.binop_weight() } else { 3 };
+    //         let w: i32 = btype.binop_weight();
+
+    //         // w > lw is default because root is the root node
+    //         if lw > w {
+    //             if let NodeVariant::Binop { r: lr, .. } = rootl.variant.as_ref().clone() {
+    //                 *rootl = lr.clone();
+    //             }
+
+    //             if let NodeVariant::Binop { r: lr, .. } = rootl.variant.as_mut() {
+    //                 *lr = root_copy;
+    //             }
+    //         }
+    //     }
+    // }
 
     fn parse_struct(&mut self) -> Result<Node, Error> {
         if self.lexer.peek(2)?.ttype == TokenType::Lbrace {
