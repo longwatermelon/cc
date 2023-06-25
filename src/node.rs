@@ -5,6 +5,7 @@ use crate::lexer::TokenType;
 pub enum Dtype {
     Int,
     Char,
+    Void,
     Struct { name: String }
 }
 
@@ -14,6 +15,7 @@ impl Dtype {
         match dtype.as_str() {
             "int" => Ok(Dtype::Int),
             "char" => Ok(Dtype::Char),
+            "void" => Ok(Dtype::Void),
             "struct" => Ok(Dtype::Struct { name: String::new() }),
             _ => Err(Error::new(format!("{} is not a valid data type.", dtype), 0))
         }
