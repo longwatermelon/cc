@@ -2,23 +2,35 @@ use crate::error::Error;
 use crate::lexer::TokenType;
 
 #[derive(Clone, Debug)]
-pub enum Dtype {
+pub enum DtypeVariant {
     Int,
     Char,
     Void,
     Struct { name: String }
 }
 
-impl Dtype {
+#[derive(Clone, Debug)]
+pub struct Dtype {
+    pub variant: DtypeVariant,
+    pub memops: Vec<char>
+}
+
+impl DtypeVariant {
     /// Does not fill out enum variant fields, only determines the enum variant type
     pub fn new(dtype: String) -> Result<Self, Error> {
         match dtype.as_str() {
-            "int" => Ok(Dtype::Int),
-            "char" => Ok(Dtype::Char),
-            "void" => Ok(Dtype::Void),
-            "struct" => Ok(Dtype::Struct { name: String::new() }),
+            "int" => Ok(DtypeVariant::Int),
+            "char" => Ok(DtypeVariant::Char),
+            "void" => Ok(DtypeVariant::Void),
+            "struct" => Ok(DtypeVariant::Struct { name: String::new() }),
             _ => Err(Error::new(format!("{} is not a valid data type.", dtype), 0))
         }
+    }
+}
+
+impl Dtype {
+    pub fn new(dtype: String) -> Result<Self, Error> {
+        Ok(Self { variant: DtypeVariant::new(dtype)?, memops: Vec::new() })
     }
 }
 
@@ -83,6 +95,7 @@ pub enum NodeVariant {
         body: Node
     },
     InitList {
+        dtype: Dtype,
         fields: Vec<(String, Node)>
     }
 }

@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::lexer::*;
 use crate::node::*;
 
+#[derive(Clone)]
 pub struct Parser {
     lexer: Lexer,
     curr: Token,
@@ -75,10 +76,12 @@ impl Parser {
                 Some(node)
             },
             TokenType::Lparen => {
-                if self.lexer.peek(1).is_ok_and(|x| x.value == "struct") &&
-                    self.lexer.peek(2).is_ok_and(|x| x.ttype == TokenType::Id) &&
-                        self.lexer.peek(3).is_ok_and(|x| x.ttype == TokenType::Rparen) &&
-                            self.lexer.peek(4).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
+                // if self.lexer.peek(1).is_ok_and(|x| x.value == "struct") &&
+                //     self.lexer.peek(2).is_ok_and(|x| x.ttype == TokenType::Id) &&
+                //         self.lexer.peek(3).is_ok_and(|x| x.ttype == TokenType::Rparen) &&
+                //             self.lexer.peek(4).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
+                let mut copy: Parser = self.clone();
+                if copy.parse_dtype().is_ok() && copy.curr.ttype == TokenType::Rparen && copy.lexer.peek(1).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
                     Some(self.parse_init_list()?)
                 } else {
                     self.expect(TokenType::Lparen)?;
@@ -121,6 +124,21 @@ impl Parser {
     fn parse_str(&mut self) -> Result<Node, Error> {
         self.expect(TokenType::Str)?;
         Ok(Node::new(NodeVariant::Str { value: self.prev.value.clone() }, self.curr.line))
+    }
+
+    fn parse_dtype(&mut self) -> Result<Dtype, Error> {
+        let mut dtype: Dtype = Dtype::new(self.curr.value.clone())?;
+        self.expect(TokenType::Id)?;
+        if let DtypeVariant::Struct { name } = &mut dtype.variant {
+            *name = self.curr.value.clone();
+        }
+
+        while self.curr.ttype == TokenType::Amp || self.curr.ttype == TokenType::Star {
+            dtype.memops.push(self.curr.value.chars().nth(0).unwrap());
+            self.expect(self.curr.ttype)?;
+        }
+        dtype.memops.reverse();
+        Ok(dtype)
     }
 
     fn parse_id(&mut self) -> Result<Node, Error> {
@@ -217,20 +235,9 @@ impl Parser {
     }
 
     fn parse_vardef(&mut self) -> Result<Node, Error> {
-        let mut dtype: Dtype = Dtype::new(self.curr.value.clone())?;
-        if let Dtype::Struct { name } = &mut dtype {
-            self.expect(self.curr.ttype)?;
-            *name = self.curr.value.clone();
-        }
+        let dtype: Dtype = self.parse_dtype()?;
 
-        self.expect(TokenType::Id)?;
-
-        let var: Node = if self.curr.ttype.is_unop() {
-            self.parse_unop()?
-        } else {
-            self.parse_var()?
-        };
-
+        let var: Node = self.parse_var()?;
         let line: usize = self.curr.line;
 
         match self.curr.ttype {
@@ -358,14 +365,7 @@ impl Parser {
         let line: usize = self.curr.line;
 
         self.expect(TokenType::Lparen)?;
-        let mut dtype: Dtype = Dtype::new(self.curr.value.clone())?;
-        self.expect(TokenType::Id)?; // struct
-        if let Dtype::Struct { name } = &mut dtype {
-            *name = self.curr.value.clone();
-        } else {
-            return Err(Error::new("only structs can use initializer lists.".to_string(), line))
-        }
-        self.expect(TokenType::Id)?; // struct name
+        let dtype: Dtype = self.parse_dtype()?;
         self.expect(TokenType::Rparen)?;
 
         self.expect(TokenType::Lbrace)?;
@@ -386,7 +386,7 @@ impl Parser {
         }
         self.expect(TokenType::Rbrace)?;
 
-        Ok(Node::new(NodeVariant::InitList { fields }, line))
+        Ok(Node::new(NodeVariant::InitList { dtype, fields }, line))
     }
 }
 
