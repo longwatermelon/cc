@@ -69,6 +69,12 @@ pub enum NodeVariant {
     Struct {
         name: String,
         fields: Vec<Node>
+    },
+    For {
+        init: Node,
+        cond: Node,
+        inc: Node,
+        body: Node
     }
 }
 
