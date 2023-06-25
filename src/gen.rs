@@ -2,12 +2,13 @@ use crate::error::Error;
 use crate::node::{Node, NodeVariant};
 
 pub struct Gen {
-    data: String
+    data: String,
+    strnum: i32
 }
 
 impl Gen {
     pub fn new() -> Self {
-        Self { data: String::new() }
+        Self { data: String::new(), strnum: 0 }
     }
 
     pub fn gen(&mut self, root: &Node) -> Result<String, Error> {
@@ -24,6 +25,7 @@ impl Gen {
             NodeVariant::Fdef {..} => self.gen_fdef(n),
             NodeVariant::Return {..} => self.gen_return(n),
             NodeVariant::Int { value } => Ok(value.to_string()),
+            NodeVariant::Str { value } => self.gen_str(value.clone()),
             _ => todo!()
         }
     }
@@ -49,6 +51,18 @@ impl Gen {
     fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { panic!() };
         Ok(format!("mov rax, {}", self.gen_expr(value)?))
+    }
+
+    fn gen_str(&mut self, value: String) -> Result<String, Error> {
+        self.data.push_str(
+            format!(
+                "str{}: db \"{}\", 10\nstr{}len: equ $ - str{}\n",
+                self.strnum, value, self.strnum, self.strnum
+            ).as_str()
+        );
+        self.strnum += 1;
+
+        Ok(String::new())
     }
 }
 

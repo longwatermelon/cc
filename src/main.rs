@@ -48,6 +48,7 @@ fn main() {
     let mut f = fs::File::create("a.s").expect("Unable to create file 'a.s'.");
     f.write_all(result.as_bytes()).expect("Unable to write to file 'a.s'.");
 
+    // Assemble
     Command::new("sh").args(&["-c", "nasm -felf64 a.s && ld *.o"]).output().unwrap();
     fs::remove_file("a.o").unwrap();
 }
