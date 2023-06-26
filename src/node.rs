@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::lexer::TokenType;
 use crate::scope::Scope;
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DtypeVariant {
@@ -10,7 +11,7 @@ pub enum DtypeVariant {
     Struct { name: String }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Dtype {
     pub variant: DtypeVariant,
     pub memops: Vec<char>
@@ -52,6 +53,17 @@ impl DtypeVariant {
             8 => "r",
             _ => panic!("DtypeVariant::register invalid size of {}", self.num_bytes())
         }.to_string() + suffix
+    }
+}
+
+impl fmt::Display for DtypeVariant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            DtypeVariant::Int => "int".to_string(),
+            DtypeVariant::Char => "char".to_string(),
+            DtypeVariant::Void => "void".to_string(),
+            DtypeVariant::Struct { name } => format!("struct {}", name)
+        })
     }
 }
 

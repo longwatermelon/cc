@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::node::{Node, NodeVariant};
+use crate::node::{Node, NodeVariant, Dtype};
 use crate::scope::{Scope, ScopeLayer, CVardef, CFdef};
 
 pub struct Gen {
@@ -160,6 +160,18 @@ impl Gen {
         // First prepare the value before pushing vardef
         // onto stack to prevent holes in the stack.
         let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
+        let value_dtype: Dtype = value.dtype(&self.scope)?;
+        let n_dtype: Dtype = n.dtype(&self.scope)?;
+        if value_dtype != n_dtype {
+            return Err(
+                Error::new(
+                    format!(
+                        "attempting to assign value of type '{}' to variable of type '{}'.",
+                        value_dtype.variant, n_dtype.variant
+                    ), n.line
+                )
+            );
+        }
         let mut res: String = self.gen_expr(value)?;
 
         self.scope.stack_offset_change_n(n, -1)?;
