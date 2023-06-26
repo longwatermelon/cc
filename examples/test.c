@@ -1,8 +1,11 @@
+int f(int a);
+int f(int a, int b)
+{
+    return b;
+}
+
 int main()
 {
-    int x = 1;
-    int y = x;
-    int z = y;
-    return z;
+    return f(1, 2);
 }
 

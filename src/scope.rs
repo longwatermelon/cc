@@ -78,7 +78,7 @@ impl Scope {
     /// Doesn't modify stack offset, uses self.stack_offset()
     pub fn push_vardef(&mut self, n: &Node, err_line: usize) -> Result<(), Error> {
         if self.find_vardef(&n.vardef_name(), err_line).is_ok() {
-            return Err(Error::new(format!("redefinition of variable {}", n.vardef_name()), n.line));
+            return Err(Error::new(format!("redefinition of variable '{}'", n.vardef_name()), n.line));
         }
 
         // self.layers must have len >= 1
@@ -97,10 +97,29 @@ impl Scope {
     }
 
     pub fn push_fdef(&mut self, n: &Node) -> Result<(), Error> {
-        let NodeVariant::Fdef { name: _, .. } = n.variant.as_ref() else { panic!("push_fdef received {:?}", n.variant) };
-        // TODO set body of declared function
-        self.fdefs.push(CFdef::new(n, self)?);
+        let NodeVariant::Fdef { name: fname, params, .. } = n.variant.as_ref() else { panic!("push_fdef received {:?}", n.variant) };
 
+        // Check if fdef exists
+        if let Ok(fdef) = self.find_fdef(fname, n.line) {
+            let NodeVariant::Fdef { body, params: orig_params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
+
+            // If declaration, replace. Otherwise it's a redef error
+            if matches!(body.variant.as_ref(), NodeVariant::Noop) {
+                if params.len() != orig_params.len() {
+                    return Err(Error::new(format!("definition of '{}' does not align with its declaration's argument count.", fname), n.line));
+                }
+
+                // Keep all fdefs with name != fname
+                self.fdefs.retain(|x| {
+                    let NodeVariant::Fdef { name, .. } = x.node.variant.as_ref() else { unreachable!() };
+                    name != fname
+                });
+            } else {
+                return Err(Error::new(format!("redefinition of function '{}'.", fname), n.line));
+            }
+        }
+
+        self.fdefs.push(CFdef::new(n, self)?);
         Ok(())
     }
 
@@ -108,7 +127,7 @@ impl Scope {
         self.fdefs.iter().find(|&x| {
             let NodeVariant::Fdef { name: fname, .. } = x.node.variant.as_ref() else { unreachable!() };
             fname == name
-        }).ok_or(Error::new(format!("function {} does not exist.", name), err_line))
+        }).ok_or(Error::new(format!("function '{}' does not exist.", name), err_line))
     }
 
     pub fn find_vardef(&self, name: &str, err_line: usize) -> Result<&CVardef, Error> {
@@ -122,7 +141,7 @@ impl Scope {
             }
         }
 
-        Err(Error::new(format!("variable {} does not exist.", name), err_line))
+        Err(Error::new(format!("variable '{}' does not exist.", name), err_line))
     }
 
     pub fn stack_offset(&self) -> i32 {

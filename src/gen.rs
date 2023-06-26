@@ -34,6 +34,7 @@ impl Gen {
             NodeVariant::Var {..} => self.gen_var(n),
             NodeVariant::Fcall {..} => self.gen_fcall(n),
             NodeVariant::Str { value } => self.gen_str(value.clone()),
+            NodeVariant::Noop |
             NodeVariant::Int {..} |
             NodeVariant::Char {..} => Ok(String::new()),
             _ => panic!("{:?} not implemented yet [EXPR]", n.variant)
@@ -81,7 +82,12 @@ impl Gen {
             self.scope.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
         }
 
-        let res: String = format!("\n{}:\n\tpush rbp\n\tmov rbp, rsp\n{}\n\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?);
+        let res: String = if matches!(body.variant.as_ref(), NodeVariant::Noop) {
+            String::new()
+        } else {
+            format!("\n{}:\n\tpush rbp\n\tmov rbp, rsp\n{}\n\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?)
+        };
+
         self.scope.pop_layer();
 
         self.scope.push_layer_from(prev_layer);
