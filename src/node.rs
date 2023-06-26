@@ -39,11 +39,20 @@ impl DtypeVariant {
 
     pub fn deref(&self) -> String {
         match self.num_bytes() {
-            1 => "BYTE PTR",
-            4 => "DWORD PTR",
-            8 => "QWORD PTR",
+            1 => "BYTE",
+            4 => "DWORD",
+            8 => "QWORD",
             _ => panic!("DtypeVariant::deref invalid size of {}", self.num_bytes())
         }.to_string()
+    }
+
+    pub fn register(&self, suffix: &str) -> String {
+        match self.num_bytes() {
+            1 => "",
+            4 => "e",
+            8 => "r",
+            _ => panic!("DtypeVariant::register invalid size of {}", self.num_bytes())
+        }.to_string() + suffix
     }
 }
 

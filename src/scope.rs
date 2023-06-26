@@ -33,7 +33,7 @@ impl CFdef {
         let mut stack_offsets: Vec<i32> = Vec::new();
         let NodeVariant::Fdef { params, .. } = node.variant.as_ref() else { unreachable!() };
 
-        let mut offset: i32 = 0;
+        let mut offset: i32 = 4;
         for param in params.iter().rev() {
             offset += param.dtype(scope).variant.num_bytes();
             stack_offsets.push(offset);
@@ -77,6 +77,10 @@ impl Scope {
         }
     }
 
+    fn push_cvardef(&mut self, cv: &CVardef) {
+        self.layers.last_mut().unwrap().push_vardef(cv.clone());
+    }
+
     pub fn push_fdef(&mut self, n: &Node) {
         if let NodeVariant::Fdef {..} = n.variant.as_ref() {
             self.fdefs.push(CFdef::new(n, self));
@@ -87,10 +91,10 @@ impl Scope {
 
     /// Pushes vardefs into the current scope. Doesn't set them to any function args.
     pub fn push_fdef_params(&mut self, name: String) {
-        let fdef: &CFdef = self.find_fdef(name).unwrap();
+        let fdef: CFdef = self.find_fdef(name).unwrap().clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
-        for param in params.clone() {
-            self.push_vardef(&param);
+        for (i, param) in params.clone().iter().enumerate() {
+            self.push_cvardef(&CVardef::new(&param, fdef.param_stack_offsets[i]));
         }
     }
 

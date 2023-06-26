@@ -19,7 +19,7 @@ impl Gen {
 
     pub fn gen(&mut self, root: &Node) -> Result<String, Error> {
         self.data = String::from("section .rodata\n");
-        let start: String = String::from("global _start\nsection .text\n_start:\ncall main\nmov rdi, rax\nmov rax, 60\nsyscall\n\n");
+        let start: String = String::from("global _start\nsection .text\n_start:\n\tcall main\n\tmov rdi, rax\n\tmov rax, 60\n\tsyscall\n");
         let body: String = self.gen_expr(root)?;
 
         Ok(format!("{}{}\n{}", start, body, self.data))
@@ -55,7 +55,7 @@ impl Gen {
         let NodeVariant::Fdef { name, body, rtype: _, .. } = n.variant.as_ref() else { unreachable!() };
         self.scope.push_fdef(n);
         self.scope.push_fdef_params(name.clone());
-        let res: String = format!("{}:\npush rbp\nmov rbp, rsp\n{}\nmov rsp, rbp\npop rbp\nret\n\n", name, self.gen_expr(body)?);
+        let res: String = format!("\n{}:\n\tpush rbp\n\tmov rbp, rsp\n{}\n\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?);
         self.scope.pop_layer();
 
         Ok(res)
@@ -63,14 +63,14 @@ impl Gen {
 
     fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
-        Ok(format!("mov rax, {}\n", self.gen_expr(value)?))
+        Ok(format!("\n\tmov {}, {}", value.dtype(&self.scope).variant.register("ax"), self.gen_expr(value)?))
     }
 
     fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
         self.scope.push_vardef(n);
         let stack_offset: i32 = self.scope.find_vardef(n.vardef_name()).unwrap().stack_offset;
         Ok(format!(
-            "mov {} [rbp{:+}], {}\n",
+            "\n\tmov {} [rbp{:+}], {}",
             n.vardef_dtype().variant.deref(),
             stack_offset,
             self.gen_expr(&n.vardef_value())?
@@ -86,7 +86,7 @@ impl Gen {
     fn gen_str(&mut self, value: String) -> Result<String, Error> {
         self.data.push_str(
             format!(
-                "str{}: db \"{}\", 10\nstr{}len: equ $ - str{}\n",
+                "\tstr{}: db \"{}\", 10\n\tstr{}len: equ $ - str{}\n",
                 self.strnum, value, self.strnum, self.strnum
             ).as_str()
         );
