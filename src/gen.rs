@@ -93,7 +93,6 @@ impl Gen {
         let NodeVariant::Fcall { name, args } = n.variant.as_ref() else { unreachable!() };
         let mut passed_args: Vec<Node> = Vec::new();
 
-        // Try not to copy entire CFdefs, it can be expensive due to the body member
         let fdef: CFdef = self.scope.find_fdef(name.clone()).unwrap().clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
 
@@ -118,18 +117,33 @@ impl Gen {
     fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
         self.scope.push_vardef(n);
         let stack_offset: i32 = self.scope.find_vardef(n.vardef_name()).unwrap().stack_offset;
-        self.gen_stack_push(n, stack_offset)
+
+        let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
+        self.gen_stack_push(value, stack_offset)
     }
 
-    fn gen_stack_push(&mut self, n: &Node, stack_offset: i32) -> Result<String, Error> {
-        let literal: Node = n.un_nest(&self.scope).clone();
-        Ok(format!(
-            "\n\tsub rsp, {}\n\tmov {} [rbp{:+}], {}",
-            n.dtype(&self.scope).variant.num_bytes(),
-            n.dtype(&self.scope).variant.deref(),
-            stack_offset,
-            self.gen_repr(&literal)?
-        ))
+    fn gen_stack_push(&mut self, pushed: &Node, stack_offset: i32) -> Result<String, Error> {
+        let mut res: String = String::new();
+        let mut pushed_repr: String = self.gen_repr(pushed)?;
+        // Mem - mem ops not allowed in mov
+        if pushed_repr.contains("[") && pushed_repr.contains("]") {
+            // Move to register first, change pushed_repr to said register
+            let reg: String = pushed.dtype(&self.scope).variant.register("bx");
+            res.push_str(format!("\n\tmov {}, {}", reg, pushed_repr).as_str());
+            pushed_repr = reg;
+        }
+
+        res.push_str(
+            format!(
+                "\n\tsub rsp, {}\n\tmov {} [rbp{:+}], {}",
+                pushed.dtype(&self.scope).variant.num_bytes(),
+                pushed.dtype(&self.scope).variant.deref(),
+                stack_offset,
+                pushed_repr
+            ).as_str()
+        );
+
+        Ok(res)
     }
 
     fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {

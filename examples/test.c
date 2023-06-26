@@ -1,10 +1,7 @@
-int func(int a)
-{
-    return a;
-}
-
 int main()
 {
-    return func(10);
+    int a = 1;
+    int b = a;
+    return b;
 }
 
