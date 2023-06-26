@@ -51,6 +51,10 @@ impl ScopeLayer {
     fn push_vardef(&mut self, v: CVardef) {
         self.vardefs.push(v);
     }
+
+    fn pop_vardef(&mut self) -> CVardef {
+        self.vardefs.pop().unwrap()
+    }
 }
 
 impl Scope {
@@ -66,15 +70,15 @@ impl Scope {
         self.layers.pop();
     }
 
+    /// Doesn't modify stack offset, uses self.stack_offset()
     pub fn push_vardef(&mut self, n: &Node) {
         // self.layers must have len >= 1
-        if let NodeVariant::Vardef { dtype, .. } = n.variant.as_ref() {
-            self.stack_offset_change(-dtype.variant.num_bytes());
-            let offset: i32 = self.stack_offset();
-            self.layers.last_mut().unwrap().push_vardef(CVardef::new(n, offset));
-        } else {
-            panic!("push_vardef received {:?}", n.variant);
-        }
+        let offset: i32 = self.stack_offset();
+        self.layers.last_mut().unwrap().push_vardef(CVardef::new(n, offset));
+    }
+
+    pub fn pop_vardef(&mut self) -> CVardef {
+        self.layers.last_mut().unwrap().pop_vardef()
     }
 
     pub fn push_cvardef(&mut self, cv: &CVardef) {
@@ -128,6 +132,10 @@ impl Scope {
 
     pub fn stack_offset_change(&mut self, delta: i32) {
         self.layers.last_mut().unwrap().stack_offset += delta;
+    }
+
+    pub fn stack_offset_change_n(&mut self, n: &Node) {
+        self.stack_offset_change(-n.dtype(self).variant.num_bytes());
     }
 }
 

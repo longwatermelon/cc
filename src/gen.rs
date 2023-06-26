@@ -49,7 +49,7 @@ impl Gen {
                 let cv: &CVardef = self.scope.find_vardef(name.clone()).unwrap();
                 Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope).variant.deref(), cv.stack_offset))
             },
-            NodeVariant::Vardef { var, .. } => self.gen_repr(var),
+            NodeVariant::Vardef { value, .. } => self.gen_repr(value),
             NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name.clone()).unwrap().node.dtype(&self.scope).variant.register("ax")),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant)
         }
@@ -111,6 +111,11 @@ impl Gen {
 
         res.push_str(format!("\n\tcall {}", name).as_str());
 
+        for _ in 0..passed_args.len() {
+            let node: Node = self.scope.pop_vardef().node;
+            self.scope.stack_offset_change_n(&node);
+        }
+
         Ok(res)
     }
 
@@ -120,14 +125,25 @@ impl Gen {
         let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
         let mut res: String = self.gen_expr(value)?;
 
+        self.scope.stack_offset_change_n(n);
         self.scope.push_vardef(n);
-        let stack_offset: i32 = self.scope.find_vardef(n.vardef_name()).unwrap().stack_offset;
+        res.push_str(self.gen_stack_push(value)?.as_str());
 
-        res.push_str(self.gen_stack_push(value, stack_offset)?.as_str());
         Ok(res)
     }
 
-    fn gen_stack_push(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
+    /// Doesn't modify scope stack offset, uses self.scope.stack_offset()
+    fn gen_stack_push(&mut self, pushed: &Node) -> Result<String, Error> {
+        Ok(
+            format!(
+                "\n\tsub rsp, {}{}",
+                pushed.dtype(&self.scope).variant.num_bytes(),
+                self.gen_stack_modify(pushed, self.scope.stack_offset())?
+            )
+        )
+    }
+
+    fn gen_stack_modify(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
         let mut res: String = String::new();
         let mut pushed_repr: String = self.gen_repr(pushed)?;
         // Mem - mem ops not allowed in mov
@@ -138,17 +154,12 @@ impl Gen {
             pushed_repr = reg;
         }
 
-        res.push_str(
-            format!(
-                "\n\tsub rsp, {}\n\tmov {} [rbp{:+}], {}",
-                pushed.dtype(&self.scope).variant.num_bytes(),
-                pushed.dtype(&self.scope).variant.deref(),
-                target_stack_offset,
-                pushed_repr
-            ).as_str()
-        );
-
-        Ok(res)
+        Ok(format!(
+            "\n\tmov {} [rbp{:+}], {}",
+            pushed.dtype(&self.scope).variant.deref(),
+            target_stack_offset,
+            pushed_repr
+        ))
     }
 
     fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {
