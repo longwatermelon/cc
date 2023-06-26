@@ -46,11 +46,11 @@ impl Gen {
             // NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Char { value } => Ok((*value as u8).to_string()),
             NodeVariant::Var { name } => {
-                let cv: &CVardef = self.scope.find_vardef(name.clone()).unwrap();
-                Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope).variant.deref(), cv.stack_offset))
+                let cv: &CVardef = self.scope.find_vardef(name.clone(), n.line)?;
+                Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope)?.variant.deref(), cv.stack_offset))
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
-            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name.clone()).unwrap().node.dtype(&self.scope).variant.register("ax")),
+            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name.clone(), n.line)?.node.dtype(&self.scope)?.variant.register("ax")),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant)
         }
     }
@@ -71,8 +71,8 @@ impl Gen {
 
         self.scope.push_layer();
         let NodeVariant::Fdef { name, body, rtype: _, .. } = n.variant.as_ref() else { unreachable!() };
-        self.scope.push_fdef(n);
-        self.scope.push_fdef_params(name.clone());
+        self.scope.push_fdef(n)?;
+        self.scope.push_fdef_params(name.clone(), n.line)?;
         let res: String = format!("\n{}:\n\tpush rbp\n\tmov rbp, rsp\n{}\n\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?);
         self.scope.pop_layer();
 
@@ -87,7 +87,7 @@ impl Gen {
             self.gen_expr(value)? +
             format!(
                 "\n\tmov {}, {}",
-                value.dtype(&self.scope).variant.register("ax"),
+                value.dtype(&self.scope)?.variant.register("ax"),
                 self.gen_repr(value)?
             ).as_str()
         )
@@ -99,7 +99,7 @@ impl Gen {
         let NodeVariant::Fcall { name, args } = n.variant.as_ref() else { unreachable!() };
         let mut passed_args: Vec<Node> = Vec::new();
 
-        let fdef: CFdef = self.scope.find_fdef(name.clone()).unwrap().clone();
+        let fdef: CFdef = self.scope.find_fdef(name.clone(), n.line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
 
         if args.len() != params.len() {
@@ -130,7 +130,7 @@ impl Gen {
 
         for _ in 0..passed_args.len() {
             let node: Node = self.scope.pop_vardef().node;
-            self.scope.stack_offset_change_n(&node);
+            self.scope.stack_offset_change_n(&node)?;
         }
 
         Ok(res)
@@ -142,8 +142,8 @@ impl Gen {
         let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
         let mut res: String = self.gen_expr(value)?;
 
-        self.scope.stack_offset_change_n(n);
-        self.scope.push_vardef(n)?;
+        self.scope.stack_offset_change_n(n)?;
+        self.scope.push_vardef(n, n.line)?;
         res.push_str(self.gen_stack_push(value)?.as_str());
 
         Ok(res)
@@ -154,7 +154,7 @@ impl Gen {
         Ok(
             format!(
                 "\n\tsub rsp, {}{}",
-                pushed.dtype(&self.scope).variant.num_bytes(),
+                pushed.dtype(&self.scope)?.variant.num_bytes(),
                 self.gen_stack_modify(pushed, self.scope.stack_offset())?
             )
         )
@@ -166,14 +166,14 @@ impl Gen {
         // Mem - mem ops not allowed in mov
         if pushed_repr.contains("[") && pushed_repr.contains("]") {
             // Move to register first, change pushed_repr to said register
-            let reg: String = pushed.dtype(&self.scope).variant.register("bx");
+            let reg: String = pushed.dtype(&self.scope)?.variant.register("bx");
             res.push_str(format!("\n\tmov {}, {}", reg, pushed_repr).as_str());
             pushed_repr = reg;
         }
 
         Ok(format!(
             "\n\tmov {} [rbp{:+}], {}",
-            pushed.dtype(&self.scope).variant.deref(),
+            pushed.dtype(&self.scope)?.variant.deref(),
             target_stack_offset,
             pushed_repr
         ))

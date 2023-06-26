@@ -30,17 +30,17 @@ impl CVardef {
 }
 
 impl CFdef {
-    pub fn new(node: &Node, scope: &Scope) -> Self {
+    pub fn new(node: &Node, scope: &Scope) -> Result<Self, Error> {
         let mut stack_offsets: Vec<i32> = Vec::new();
         let NodeVariant::Fdef { params, .. } = node.variant.as_ref() else { unreachable!() };
 
         let mut offset: i32 = 16;
         for param in params.iter().rev() {
             stack_offsets.push(offset);
-            offset += param.dtype(scope).variant.num_bytes();
+            offset += param.dtype(scope)?.variant.num_bytes();
         }
 
-        Self { node: node.clone(), param_stack_offsets: stack_offsets }
+        Ok(Self { node: node.clone(), param_stack_offsets: stack_offsets })
     }
 }
 
@@ -76,8 +76,8 @@ impl Scope {
     }
 
     /// Doesn't modify stack offset, uses self.stack_offset()
-    pub fn push_vardef(&mut self, n: &Node) -> Result<(), Error> {
-        if self.find_vardef(n.vardef_name()).is_some() {
+    pub fn push_vardef(&mut self, n: &Node, err_line: usize) -> Result<(), Error> {
+        if self.find_vardef(n.vardef_name(), err_line).is_ok() {
             return Err(Error::new(format!("redefinition of variable {}", n.vardef_name()), n.line));
         }
 
@@ -96,45 +96,49 @@ impl Scope {
         self.layers.last_mut().unwrap().push_vardef(cv.clone());
     }
 
-    pub fn push_fdef(&mut self, n: &Node) {
+    pub fn push_fdef(&mut self, n: &Node) -> Result<(), Error> {
         if let NodeVariant::Fdef {..} = n.variant.as_ref() {
-            self.fdefs.push(CFdef::new(n, self));
+            self.fdefs.push(CFdef::new(n, self)?);
         } else {
             panic!("push_fdef received {:?}", n.variant);
         }
+
+        Ok(())
     }
 
     /// Pushes vardefs into the current scope. Doesn't set them to any function args.
-    pub fn push_fdef_params(&mut self, name: String) {
-        let fdef: CFdef = self.find_fdef(name).unwrap().clone();
+    pub fn push_fdef_params(&mut self, name: String, err_line: usize) -> Result<(), Error> {
+        let fdef: CFdef = self.find_fdef(name, err_line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
         for (i, param) in params.clone().iter().enumerate() {
             self.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
         }
+
+        Ok(())
     }
 
-    pub fn find_fdef(&self, name: String) -> Option<&CFdef> {
+    pub fn find_fdef(&self, name: String, err_line: usize) -> Result<&CFdef, Error> {
         for fdef in &self.fdefs {
             if let NodeVariant::Fdef { name: fname, .. } = fdef.node.variant.as_ref() {
                 if fname.clone() == name {
-                    return Some(fdef);
+                    return Ok(fdef);
                 }
             }
         }
 
-        None
+        Err(Error::new(format!("function {} does not exist.", name), err_line))
     }
 
-    pub fn find_vardef(&self, name: String) -> Option<&CVardef> {
+    pub fn find_vardef(&self, name: String, err_line: usize) -> Result<&CVardef, Error> {
         for layer in &self.layers {
             for def in &layer.vardefs {
                 if def.node.vardef_name() == name {
-                    return Some(def);
+                    return Ok(def);
                 }
             }
         }
 
-        None
+        Err(Error::new(format!("variable {} does not exist.", name), err_line))
     }
 
     pub fn stack_offset(&self) -> i32 {
@@ -145,8 +149,9 @@ impl Scope {
         self.layers.last_mut().unwrap().stack_offset += delta;
     }
 
-    pub fn stack_offset_change_n(&mut self, n: &Node) {
-        self.stack_offset_change(-n.dtype(self).variant.num_bytes());
+    pub fn stack_offset_change_n(&mut self, n: &Node) -> Result<(), Error> {
+        self.stack_offset_change(-n.dtype(self)?.variant.num_bytes());
+        Ok(())
     }
 }
 

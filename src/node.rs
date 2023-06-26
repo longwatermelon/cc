@@ -149,18 +149,20 @@ impl Node {
         Self { variant: Box::new(variant), line }
     }
 
-    pub fn dtype(&self, scope: &Scope) -> Dtype {
-        match self.variant.as_ref() {
-            NodeVariant::Str {..} => Dtype::from_fields_memops(DtypeVariant::Char, vec!['*']),
-            NodeVariant::Int {..} => Dtype::from_fields(DtypeVariant::Int),
-            NodeVariant::Char {..} => Dtype::from_fields(DtypeVariant::Char),
-            NodeVariant::Fcall { name, .. } => scope.find_fdef(name.clone()).unwrap().node.dtype(scope),
-            NodeVariant::Fdef { rtype, .. } => rtype.clone(),
-            NodeVariant::Vardef { dtype, .. } => dtype.clone(),
-            NodeVariant::Var { name } => scope.find_vardef(name.clone()).unwrap().node.dtype(scope),
-            NodeVariant::InitList { dtype, .. } => dtype.clone(),
-            _ => panic!("{:?} doesn't have a dtype.", self.variant)
-        }
+    pub fn dtype(&self, scope: &Scope) -> Result<Dtype, Error> {
+        Ok(
+            match self.variant.as_ref() {
+                NodeVariant::Str {..} => Dtype::from_fields_memops(DtypeVariant::Char, vec!['*']),
+                NodeVariant::Int {..} => Dtype::from_fields(DtypeVariant::Int),
+                NodeVariant::Char {..} => Dtype::from_fields(DtypeVariant::Char),
+                NodeVariant::Fcall { name, .. } => scope.find_fdef(name.clone(), self.line)?.node.dtype(scope)?,
+                NodeVariant::Fdef { rtype, .. } => rtype.clone(),
+                NodeVariant::Vardef { dtype, .. } => dtype.clone(),
+                NodeVariant::Var { name } => scope.find_vardef(name.clone(), self.line)?.node.dtype(scope)?,
+                NodeVariant::InitList { dtype, .. } => dtype.clone(),
+                _ => panic!("{:?} doesn't have a dtype.", self.variant)
+            }
+        )
     }
 
     pub fn var_name(&self) -> String {
