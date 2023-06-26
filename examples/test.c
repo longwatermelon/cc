@@ -1,7 +1,10 @@
+int func(int a, int b)
+{
+    return a;
+}
+
 int main()
 {
-    int a = 1;
-    int b = a;
-    return b;
+    int x = func(1, 2);
 }
 

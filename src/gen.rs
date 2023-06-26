@@ -34,6 +34,8 @@ impl Gen {
             NodeVariant::Var {..} => self.gen_var(n),
             NodeVariant::Fcall {..} => self.gen_fcall(n),
             NodeVariant::Str { value } => self.gen_str(value.clone()),
+            NodeVariant::Int {..} |
+            NodeVariant::Char {..} => Ok(String::new()),
             _ => panic!("{:?} not implemented yet [EXPR]", n.variant)
         }
     }
@@ -104,9 +106,7 @@ impl Gen {
         }
 
         for arg in &passed_args {
-            res.push_str(
-                self.gen_vardef(arg)?.as_str()
-            );
+            res.push_str(self.gen_vardef(arg)?.as_str());
         }
 
         res.push_str(format!("\n\tcall {}", name).as_str());
@@ -115,14 +115,19 @@ impl Gen {
     }
 
     fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
+        // First prepare the value before pushing vardef
+        // onto stack to prevent holes in the stack
+        let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
+        let mut res: String = self.gen_expr(value)?;
+
         self.scope.push_vardef(n);
         let stack_offset: i32 = self.scope.find_vardef(n.vardef_name()).unwrap().stack_offset;
 
-        let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
-        self.gen_stack_push(value, stack_offset)
+        res.push_str(self.gen_stack_push(value, stack_offset)?.as_str());
+        Ok(res)
     }
 
-    fn gen_stack_push(&mut self, pushed: &Node, stack_offset: i32) -> Result<String, Error> {
+    fn gen_stack_push(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
         let mut res: String = String::new();
         let mut pushed_repr: String = self.gen_repr(pushed)?;
         // Mem - mem ops not allowed in mov
@@ -138,7 +143,7 @@ impl Gen {
                 "\n\tsub rsp, {}\n\tmov {} [rbp{:+}], {}",
                 pushed.dtype(&self.scope).variant.num_bytes(),
                 pushed.dtype(&self.scope).variant.deref(),
-                stack_offset,
+                target_stack_offset,
                 pushed_repr
             ).as_str()
         );

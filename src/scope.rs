@@ -69,8 +69,8 @@ impl Scope {
     pub fn push_vardef(&mut self, n: &Node) {
         // self.layers must have len >= 1
         if let NodeVariant::Vardef { dtype, .. } = n.variant.as_ref() {
-            self.layers.last_mut().unwrap().stack_offset -= dtype.variant.num_bytes();
-            let offset: i32 = self.layers.last().unwrap().stack_offset;
+            self.stack_offset_change(-dtype.variant.num_bytes());
+            let offset: i32 = self.stack_offset();
             self.layers.last_mut().unwrap().push_vardef(CVardef::new(n, offset));
         } else {
             panic!("push_vardef received {:?}", n.variant);
@@ -120,6 +120,14 @@ impl Scope {
         }
 
         None
+    }
+
+    pub fn stack_offset(&self) -> i32 {
+        self.layers.last().unwrap().stack_offset
+    }
+
+    pub fn stack_offset_change(&mut self, delta: i32) {
+        self.layers.last_mut().unwrap().stack_offset += delta;
     }
 }
 

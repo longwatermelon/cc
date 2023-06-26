@@ -163,14 +163,6 @@ impl Node {
         }
     }
 
-    pub fn un_nest<'a>(&'a self, scope: &'a Scope) -> &'a Node {
-        match self.variant.as_ref() {
-            NodeVariant::Vardef { value, .. } => value.un_nest(scope),
-            NodeVariant::Var { name } => scope.find_vardef(name.clone()).unwrap().node.un_nest(scope),
-            _ => self
-        }
-    }
-
     pub fn var_name(&self) -> String {
         match self.variant.as_ref() {
             NodeVariant::Unop { r, .. } => r.var_name(),
