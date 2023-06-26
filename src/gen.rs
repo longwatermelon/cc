@@ -102,6 +102,19 @@ impl Gen {
         let fdef: CFdef = self.scope.find_fdef(name.clone()).unwrap().clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
 
+        if args.len() != params.len() {
+            return Err(
+                Error::new(
+                    format!(
+                        "function {} takes in {} argument{} but received {}.",
+                        name, params.len(),
+                        if params.len() == 1 { "" } else { "s" },
+                        args.len()
+                    ), n.line
+                )
+            );
+        }
+
         for i in 0..args.len() {
             let mut param: Node = params[i].clone();
             let NodeVariant::Vardef { value, dtype: _, .. } = param.variant.as_mut() else { unreachable!() };
