@@ -97,44 +97,27 @@ impl Scope {
     }
 
     pub fn push_fdef(&mut self, n: &Node) -> Result<(), Error> {
-        if let NodeVariant::Fdef {..} = n.variant.as_ref() {
-            self.fdefs.push(CFdef::new(n, self)?);
-        } else {
-            panic!("push_fdef received {:?}", n.variant);
-        }
-
-        Ok(())
-    }
-
-    /// Pushes vardefs into the current scope. Doesn't set them to any function args.
-    pub fn push_fdef_params(&mut self, name: String, err_line: usize) -> Result<(), Error> {
-        let fdef: CFdef = self.find_fdef(name, err_line)?.clone();
-        let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
-        for (i, param) in params.clone().iter().enumerate() {
-            self.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
-        }
+        let NodeVariant::Fdef { name: _, .. } = n.variant.as_ref() else { panic!("push_fdef received {:?}", n.variant) };
+        self.fdefs.push(CFdef::new(n, self)?);
 
         Ok(())
     }
 
     pub fn find_fdef(&self, name: String, err_line: usize) -> Result<&CFdef, Error> {
-        for fdef in &self.fdefs {
-            if let NodeVariant::Fdef { name: fname, .. } = fdef.node.variant.as_ref() {
-                if fname.clone() == name {
-                    return Ok(fdef);
-                }
-            }
-        }
-
-        Err(Error::new(format!("function {} does not exist.", name), err_line))
+        self.fdefs.iter().find(|&x| {
+            let NodeVariant::Fdef { name: fname, .. } = x.node.variant.as_ref() else { unreachable!() };
+            fname.clone() == name
+        }).ok_or(Error::new(format!("function {} does not exist.", name), err_line))
     }
 
     pub fn find_vardef(&self, name: String, err_line: usize) -> Result<&CVardef, Error> {
         for layer in &self.layers {
-            for def in &layer.vardefs {
-                if def.node.vardef_name() == name {
-                    return Ok(def);
-                }
+            let result: Option<&CVardef> = layer.vardefs.iter().find(|&x|
+                x.node.vardef_name() == name
+            );
+
+            if result.is_some() {
+                return Ok(result.unwrap());
             }
         }
 

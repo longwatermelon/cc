@@ -67,12 +67,20 @@ impl Gen {
     }
 
     fn gen_fdef(&mut self, n: &Node) -> Result<String, Error> {
+        // Scope switches, no nesting
         let prev_layer: ScopeLayer = self.scope.pop_layer();
 
         self.scope.push_layer();
         let NodeVariant::Fdef { name, body, rtype: _, .. } = n.variant.as_ref() else { unreachable!() };
+
+        // Push params into scope so function body can access them
         self.scope.push_fdef(n)?;
-        self.scope.push_fdef_params(name.clone(), n.line)?;
+        let fdef: CFdef = self.scope.find_fdef(name.clone(), n.line)?.clone();
+        let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
+        for (i, param) in params.clone().iter().enumerate() {
+            self.scope.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
+        }
+
         let res: String = format!("\n{}:\n\tpush rbp\n\tmov rbp, rsp\n{}\n\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?);
         self.scope.pop_layer();
 
