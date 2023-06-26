@@ -1,5 +1,4 @@
 use colored::Colorize;
-use std::fmt;
 
 #[derive(Debug)]
 pub struct Error {
@@ -13,11 +12,16 @@ impl Error {
             message, line
         }
     }
-}
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: Line {}: {}", "error".bright_red(), self.line, self.message)
+    pub fn print(&self, prog: String) {
+        let split: Vec<&str> = prog.split('\n').collect();
+        println!("{}: Line {}: {}", "error".bright_red(), self.line, self.message);
+        let longest: usize = *[self.line - 1, self.line, self.line + 1].map(|x| x.to_string().len()).iter().max().unwrap();
+        for i in -1i32..=1 {
+            let padding: usize = longest - (self.line as i32 + i).to_string().len();
+            let format: String = format!("  {}{} | {}", self.line as i32 + i, " ".repeat(padding), split[(self.line as i32 + i - 1) as usize]);
+            println!("{}", if i == 0 { format.white().bold() } else { format.truecolor(150, 150, 150) });
+        }
     }
 }
 
