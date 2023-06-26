@@ -1,4 +1,5 @@
 use crate::node::{Node, NodeVariant};
+use crate::error::Error;
 
 #[derive(Clone)]
 pub struct CVardef {
@@ -12,7 +13,7 @@ pub struct CFdef {
     pub param_stack_offsets: Vec<i32>
 }
 
-struct ScopeLayer {
+pub struct ScopeLayer {
     vardefs: Vec<CVardef>,
     stack_offset: i32
 }
@@ -66,15 +67,25 @@ impl Scope {
         self.layers.push(ScopeLayer::new());
     }
 
-    pub fn pop_layer(&mut self) {
-        self.layers.pop();
+    pub fn push_layer_from(&mut self, layer: ScopeLayer) {
+        self.layers.push(layer);
+    }
+
+    pub fn pop_layer(&mut self) -> ScopeLayer {
+        self.layers.pop().unwrap()
     }
 
     /// Doesn't modify stack offset, uses self.stack_offset()
-    pub fn push_vardef(&mut self, n: &Node) {
+    pub fn push_vardef(&mut self, n: &Node) -> Result<(), Error> {
+        if self.find_vardef(n.vardef_name()).is_some() {
+            return Err(Error::new(format!("redefinition of variable {}", n.vardef_name()), n.line));
+        }
+
         // self.layers must have len >= 1
         let offset: i32 = self.stack_offset();
         self.layers.last_mut().unwrap().push_vardef(CVardef::new(n, offset));
+
+        Ok(())
     }
 
     pub fn pop_vardef(&mut self) -> CVardef {

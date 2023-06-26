@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::node::{Node, NodeVariant};
-use crate::scope::{Scope, CVardef, CFdef};
+use crate::scope::{Scope, ScopeLayer, CVardef, CFdef};
 
 pub struct Gen {
     scope: Scope,
@@ -67,12 +67,16 @@ impl Gen {
     }
 
     fn gen_fdef(&mut self, n: &Node) -> Result<String, Error> {
+        let prev_layer: ScopeLayer = self.scope.pop_layer();
+
         self.scope.push_layer();
         let NodeVariant::Fdef { name, body, rtype: _, .. } = n.variant.as_ref() else { unreachable!() };
         self.scope.push_fdef(n);
         self.scope.push_fdef_params(name.clone());
         let res: String = format!("\n{}:\n\tpush rbp\n\tmov rbp, rsp\n{}\n\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?);
         self.scope.pop_layer();
+
+        self.scope.push_layer_from(prev_layer);
 
         Ok(res)
     }
@@ -126,7 +130,7 @@ impl Gen {
         let mut res: String = self.gen_expr(value)?;
 
         self.scope.stack_offset_change_n(n);
-        self.scope.push_vardef(n);
+        self.scope.push_vardef(n)?;
         res.push_str(self.gen_stack_push(value)?.as_str());
 
         Ok(res)
