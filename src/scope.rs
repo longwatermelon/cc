@@ -117,8 +117,8 @@ impl Scope {
                 x.node.vardef_name() == name
             );
 
-            if result.is_some() {
-                return Ok(result.unwrap());
+            if let Some(res) = result {
+                return Ok(res);
             }
         }
 

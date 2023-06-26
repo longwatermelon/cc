@@ -46,11 +46,11 @@ impl Gen {
             // NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Char { value } => Ok((*value as u8).to_string()),
             NodeVariant::Var { name } => {
-                let cv: &CVardef = self.scope.find_vardef(&name, n.line)?;
+                let cv: &CVardef = self.scope.find_vardef(name, n.line)?;
                 Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope)?.variant.deref(), cv.stack_offset))
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
-            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(&name, n.line)?.node.dtype(&self.scope)?.variant.register("ax")),
+            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register("ax")),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant)
         }
     }
@@ -75,7 +75,7 @@ impl Gen {
 
         // Push params into scope so function body can access them
         self.scope.push_fdef(n)?;
-        let fdef: CFdef = self.scope.find_fdef(&name, n.line)?.clone();
+        let fdef: CFdef = self.scope.find_fdef(name, n.line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
         for (i, param) in params.clone().iter().enumerate() {
             self.scope.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
@@ -107,7 +107,7 @@ impl Gen {
         let NodeVariant::Fcall { name, args } = n.variant.as_ref() else { unreachable!() };
         let mut passed_args: Vec<Node> = Vec::new();
 
-        let fdef: CFdef = self.scope.find_fdef(&name, n.line)?.clone();
+        let fdef: CFdef = self.scope.find_fdef(name, n.line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
 
         if args.len() != params.len() {
@@ -172,7 +172,7 @@ impl Gen {
         let mut res: String = String::new();
         let mut pushed_repr: String = self.gen_repr(pushed)?;
         // Mem - mem ops not allowed in mov
-        if pushed_repr.contains("[") && pushed_repr.contains("]") {
+        if pushed_repr.contains('[') && pushed_repr.contains(']') {
             // Move to register first, change pushed_repr to said register
             let reg: String = pushed.dtype(&self.scope)?.variant.register("bx");
             res.push_str(&format!("\n\tmov {}, {}", reg, pushed_repr));

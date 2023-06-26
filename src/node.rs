@@ -155,10 +155,10 @@ impl Node {
                 NodeVariant::Str {..} => Dtype::from_fields_memops(DtypeVariant::Char, vec!['*']),
                 NodeVariant::Int {..} => Dtype::from_fields(DtypeVariant::Int),
                 NodeVariant::Char {..} => Dtype::from_fields(DtypeVariant::Char),
-                NodeVariant::Fcall { name, .. } => scope.find_fdef(&name, self.line)?.node.dtype(scope)?,
+                NodeVariant::Fcall { name, .. } => scope.find_fdef(name, self.line)?.node.dtype(scope)?,
                 NodeVariant::Fdef { rtype, .. } => rtype.clone(),
                 NodeVariant::Vardef { dtype, .. } => dtype.clone(),
-                NodeVariant::Var { name } => scope.find_vardef(&name, self.line)?.node.dtype(scope)?,
+                NodeVariant::Var { name } => scope.find_vardef(name, self.line)?.node.dtype(scope)?,
                 NodeVariant::InitList { dtype, .. } => dtype.clone(),
                 _ => panic!("{:?} doesn't have a dtype.", self.variant)
             }
