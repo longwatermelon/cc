@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::lexer::TokenType;
 use crate::scope::Scope;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DtypeVariant {
     Int,
     Char,

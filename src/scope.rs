@@ -97,16 +97,16 @@ impl Scope {
     }
 
     pub fn push_fdef(&mut self, n: &Node) -> Result<(), Error> {
-        let NodeVariant::Fdef { name: fname, params, .. } = n.variant.as_ref() else { panic!("push_fdef received {:?}", n.variant) };
+        let NodeVariant::Fdef { name: fname, params, rtype, .. } = n.variant.as_ref() else { panic!("push_fdef received {:?}", n.variant) };
 
         // Check if fdef exists
         if let Ok(fdef) = self.find_fdef(fname, n.line) {
-            let NodeVariant::Fdef { body, params: orig_params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
+            let NodeVariant::Fdef { body, params: orig_params, rtype: orig_rtype, .. } = fdef.node.variant.as_ref() else { unreachable!() };
 
             // If declaration, replace. Otherwise it's a redef error
             if matches!(body.variant.as_ref(), NodeVariant::Noop) {
-                if params.len() != orig_params.len() {
-                    return Err(Error::new(format!("definition of '{}' does not align with its declaration's argument count.", fname), n.line));
+                if params.len() != orig_params.len() || rtype.variant != orig_rtype.variant {
+                    return Err(Error::new(format!("definition of '{}' does not align with its declaration.", fname), n.line));
                 }
 
                 // Keep all fdefs with name != fname
