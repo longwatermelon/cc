@@ -50,7 +50,7 @@ fn main() {
     f.write_all(result.as_bytes()).expect("Unable to write to file 'a.s'.");
 
     // Assemble
-    let output = Command::new("sh").args(&["-c", "nasm -felf64 a.s && ld *.o && rm *.o"]).output().unwrap();
+    let output = Command::new("sh").args(["-c", "nasm -felf64 a.s && ld *.o && rm *.o"]).output().unwrap();
     if !output.status.success() {
         println!("{:#?}", output);
     }

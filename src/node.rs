@@ -185,19 +185,5 @@ impl Node {
             _ => panic!("vardef_name received {:?}", self.variant)
         }
     }
-
-    pub fn vardef_dtype(&self) -> Dtype {
-        match self.variant.as_ref() {
-            NodeVariant::Vardef { dtype, .. } => dtype.clone(),
-            _ => panic!("vardef_dtype received {:?}", self.variant)
-        }
-    }
-
-    pub fn vardef_value(&self) -> Node {
-        match self.variant.as_ref() {
-            NodeVariant::Vardef { value, .. } => value.clone(),
-            _ => panic!("vardef_value received {:?}", self.variant)
-        }
-    }
 }
 

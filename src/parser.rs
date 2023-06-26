@@ -102,10 +102,8 @@ impl Parser {
             self.prev_expr = n.clone();
         }
 
-        if !only_one {
-            if self.curr.ttype.is_binop() {
-                return Ok(Some(self.parse_binop()?));
-            }
+        if !only_one && self.curr.ttype.is_binop() {
+            return Ok(Some(self.parse_binop()?));
         }
 
         Ok(n)
@@ -139,7 +137,7 @@ impl Parser {
         }
 
         while self.curr.ttype == TokenType::Amp || self.curr.ttype == TokenType::Star {
-            dtype.memops.push(self.curr.value.chars().nth(0).unwrap());
+            dtype.memops.push(self.curr.value.chars().next().unwrap());
             self.expect(self.curr.ttype)?;
         }
         dtype.memops.reverse();
@@ -325,13 +323,9 @@ impl Parser {
 
         self.expect(TokenType::Lbrace)?;
         let mut fields: Vec<Node> = Vec::new();
-        loop {
-            if let Some(expr) = self.parse_expr(false)? {
-                fields.push(expr);
-                self.expect(TokenType::Semi)?;
-            } else {
-                break;
-            }
+        while let Some(expr) = self.parse_expr(false)? {
+            fields.push(expr);
+            self.expect(TokenType::Semi)?;
         }
         self.expect(TokenType::Rbrace)?;
         self.expect(TokenType::Semi)?;

@@ -94,7 +94,7 @@ impl Scope {
         let fdef: CFdef = self.find_fdef(name).unwrap().clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
         for (i, param) in params.clone().iter().enumerate() {
-            self.push_cvardef(&CVardef::new(&param, fdef.param_stack_offsets[i]));
+            self.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
         }
     }
 

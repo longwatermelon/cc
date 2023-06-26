@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::node::{Node, NodeVariant, Dtype};
+use crate::node::{Node, NodeVariant};
 use crate::scope::{Scope, CVardef, CFdef};
 
 pub struct Gen {
@@ -104,16 +104,13 @@ impl Gen {
             passed_args.push(param);
         }
 
-        for i in 0..passed_args.len() {
+        for arg in &passed_args {
             res.push_str(
-                self.gen_vardef(&passed_args[i])?.as_str()
+                self.gen_vardef(arg)?.as_str()
             );
         }
 
         res.push_str(format!("\n\tcall {}", name).as_str());
-        // self.scope.push_layer();
-        // res.push_str(self.gen_expr(body)?.as_str());
-        // self.scope.pop_layer();
 
         Ok(res)
     }
@@ -137,10 +134,6 @@ impl Gen {
 
     fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {
         Ok(String::new())
-        // let offset: i32 = self.scope.find_vardef(n.var_name()).unwrap().stack_offset;
-        // let dtype: Dtype = n.dtype(&self.scope);
-        // Ok(String::new())
-        // Ok(format!("{} [rbp{:+}]", dtype.variant.deref(), offset))
     }
 
     fn gen_str(&mut self, value: String) -> Result<String, Error> {
