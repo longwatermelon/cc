@@ -187,7 +187,7 @@ impl Gen {
         }
 
         Ok(res + format!(
-            "\n\t;test\n\tmov {} [rbp{:+}], {}",
+            "\n\tmov {} [rbp{:+}], {}",
             pushed.dtype(&self.scope)?.variant.deref(),
             target_stack_offset,
             pushed_repr
