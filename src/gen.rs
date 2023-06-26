@@ -67,7 +67,7 @@ impl Gen {
     }
 
     fn gen_fdef(&mut self, n: &Node) -> Result<String, Error> {
-        // Scope switches, no nesting
+        // Scope switches, so no nesting
         let prev_layer: ScopeLayer = self.scope.pop_layer();
 
         self.scope.push_layer();
@@ -104,12 +104,15 @@ impl Gen {
     fn gen_fcall(&mut self, n: &Node) -> Result<String, Error> {
         let mut res: String = String::new();
 
+        // Get args
         let NodeVariant::Fcall { name, args } = n.variant.as_ref() else { unreachable!() };
         let mut passed_args: Vec<Node> = Vec::new();
 
+        // Get params
         let fdef: CFdef = self.scope.find_fdef(name, n.line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
 
+        // Check if equal
         if args.len() != params.len() {
             return Err(
                 Error::new(
@@ -123,6 +126,7 @@ impl Gen {
             );
         }
 
+        // Fill in argument values to be passed
         for i in 0..args.len() {
             let mut param: Node = params[i].clone();
             let NodeVariant::Vardef { value, dtype: _, .. } = param.variant.as_mut() else { unreachable!() };
@@ -130,34 +134,37 @@ impl Gen {
             passed_args.push(param);
         }
 
+        // Push in reverse order
         for arg in passed_args.iter().rev() {
             res.push_str(&self.gen_vardef(arg)?);
         }
 
-        res.push_str(&format!("\n\tcall {}", name));
-
+        // Only the generated assembly is needed, side effect of variables pushed
+        // into scope member variable has to be reversed.
+        // Pop previously pushed variables off
         for _ in 0..passed_args.len() {
-            let node: Node = self.scope.pop_vardef().node;
-            self.scope.stack_offset_change_n(&node)?;
+            self.scope.pop_vardef();
         }
 
+        res.push_str(&format!("\n\tcall {}", name));
         Ok(res)
     }
 
     fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
         // First prepare the value before pushing vardef
-        // onto stack to prevent holes in the stack
+        // onto stack to prevent holes in the stack.
         let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
         let mut res: String = self.gen_expr(value)?;
 
-        self.scope.stack_offset_change_n(n)?;
+        self.scope.stack_offset_change_n(n, -1)?;
         self.scope.push_vardef(n, n.line)?;
         res.push_str(&self.gen_stack_push(value)?);
 
         Ok(res)
     }
 
-    /// Doesn't modify scope stack offset, uses self.scope.stack_offset()
+    /// Doesn't modify scope stack offset, uses self.scope.stack_offset().
+    /// No gen_expr.
     fn gen_stack_push(&mut self, pushed: &Node) -> Result<String, Error> {
         Ok(
             format!(

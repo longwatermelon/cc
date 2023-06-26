@@ -3,8 +3,14 @@ int func(int a)
     return a;
 }
 
+int func2(int a)
+{
+    return 49;
+}
+
 int main()
 {
-    return func(2);
+    int x = func2(func(1));
+    return x;
 }
 

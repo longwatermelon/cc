@@ -133,8 +133,8 @@ impl Scope {
         self.layers.last_mut().unwrap().stack_offset += delta;
     }
 
-    pub fn stack_offset_change_n(&mut self, n: &Node) -> Result<(), Error> {
-        self.stack_offset_change(-n.dtype(self)?.variant.num_bytes());
+    pub fn stack_offset_change_n(&mut self, n: &Node, direction: i32) -> Result<(), Error> {
+        self.stack_offset_change(direction * n.dtype(self)?.variant.num_bytes());
         Ok(())
     }
 }
