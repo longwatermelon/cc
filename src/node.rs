@@ -48,8 +48,7 @@ impl DtypeVariant {
 
     pub fn register(&self, suffix: &str) -> String {
         match self.num_bytes() {
-            1 => "",
-            4 => "e",
+            1 | 4 => "e",
             8 => "r",
             _ => panic!("DtypeVariant::register invalid size of {}", self.num_bytes())
         }.to_string() + suffix
@@ -161,6 +160,14 @@ impl Node {
             NodeVariant::Var { name } => scope.find_vardef(name.clone()).unwrap().node.dtype(scope),
             NodeVariant::InitList { dtype, .. } => dtype.clone(),
             _ => panic!("{:?} doesn't have a dtype.", self.variant)
+        }
+    }
+
+    pub fn un_nest<'a>(&'a self, scope: &'a Scope) -> &'a Node {
+        match self.variant.as_ref() {
+            NodeVariant::Vardef { value, .. } => value.un_nest(scope),
+            NodeVariant::Var { name } => scope.find_vardef(name.clone()).unwrap().node.un_nest(scope),
+            _ => self
         }
     }
 

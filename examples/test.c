@@ -5,6 +5,6 @@ int func(int a)
 
 int main()
 {
-    return 10;
+    return func(10);
 }
 
