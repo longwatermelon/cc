@@ -186,12 +186,12 @@ impl Gen {
             pushed_repr = reg;
         }
 
-        Ok(format!(
-            "\n\tmov {} [rbp{:+}], {}",
+        Ok(res + format!(
+            "\n\t;test\n\tmov {} [rbp{:+}], {}",
             pushed.dtype(&self.scope)?.variant.deref(),
             target_stack_offset,
             pushed_repr
-        ))
+        ).as_str())
     }
 
     fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {
