@@ -1,5 +1,6 @@
 use crate::error::Error;
 use crate::lexer::TokenType;
+use crate::scope::Scope;
 
 #[derive(Clone, Debug)]
 pub enum DtypeVariant {
@@ -49,6 +50,14 @@ impl DtypeVariant {
 impl Dtype {
     pub fn new(dtype: String) -> Result<Self, Error> {
         Ok(Self { variant: DtypeVariant::new(dtype)?, memops: Vec::new() })
+    }
+
+    pub fn from_fields(variant: DtypeVariant) -> Self {
+        Self { variant, memops: Vec::new() }
+    }
+
+    pub fn from_fields_memops(variant: DtypeVariant, memops: Vec<char>) -> Self {
+        Self { variant, memops }
     }
 }
 
@@ -130,6 +139,20 @@ pub struct Node {
 impl Node {
     pub fn new(variant: NodeVariant, line: usize) -> Self {
         Self { variant: Box::new(variant), line }
+    }
+
+    pub fn dtype(&self, scope: &Scope) -> Dtype {
+        match self.variant.as_ref() {
+            NodeVariant::Str {..} => Dtype::from_fields_memops(DtypeVariant::Char, vec!['*']),
+            NodeVariant::Int {..} => Dtype::from_fields(DtypeVariant::Int),
+            NodeVariant::Char {..} => Dtype::from_fields(DtypeVariant::Char),
+            NodeVariant::Fcall { name, .. } => scope.find_fdef(name.clone()).unwrap().node.dtype(scope),
+            NodeVariant::Fdef { rtype, .. } => rtype.clone(),
+            NodeVariant::Vardef { dtype, .. } => dtype.clone(),
+            NodeVariant::Var { name } => scope.find_vardef(name.clone()).unwrap().node.dtype(scope),
+            NodeVariant::InitList { dtype, .. } => dtype.clone(),
+            _ => panic!("{:?} doesn't have a dtype.", self.variant)
+        }
     }
 
     pub fn var_name(&self) -> String {

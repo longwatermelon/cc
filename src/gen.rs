@@ -1,6 +1,6 @@
 use crate::error::Error;
-use crate::node::{Node, NodeVariant};
-use crate::scope::{Scope, CVardef};
+use crate::node::{Node, NodeVariant, Dtype};
+use crate::scope::Scope;
 
 pub struct Gen {
     scope: Scope,
@@ -34,7 +34,8 @@ impl Gen {
             NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Char { value } => Ok((*value as u8).to_string()),
             NodeVariant::Vardef {..} => self.gen_vardef(n),
-            _ => todo!()
+            NodeVariant::Var {..} => self.gen_var(n),
+            _ => panic!("{:?} not implemented yet", n.variant)
         }
     }
 
@@ -50,26 +51,36 @@ impl Gen {
     }
 
     fn gen_fdef(&mut self, n: &Node) -> Result<String, Error> {
-        let NodeVariant::Fdef { name, params: _, body, rtype: _ } = n.variant.as_ref() else { unreachable!() };
+        self.scope.push_layer();
+        let NodeVariant::Fdef { name, body, rtype: _, .. } = n.variant.as_ref() else { unreachable!() };
+        self.scope.push_fdef(n);
+        self.scope.push_fdef_params(name.clone());
         let res: String = format!("{}:\npush rbp\nmov rbp, rsp\n{}\nmov rsp, rbp\npop rbp\nret\n\n", name, self.gen_expr(body)?);
+        self.scope.pop_layer();
 
         Ok(res)
     }
 
     fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
-        Ok(format!("mov rax, {}", self.gen_expr(value)?))
+        Ok(format!("mov rax, {}\n", self.gen_expr(value)?))
     }
 
     fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
         self.scope.push_vardef(n);
-        let cv: CVardef = self.scope.mut_vardef(n.vardef_name()).unwrap().clone();
+        let stack_offset: i32 = self.scope.find_vardef(n.vardef_name()).unwrap().stack_offset;
         Ok(format!(
             "mov {} [rbp{:+}], {}\n",
             n.vardef_dtype().variant.deref(),
-            cv.stack_offset,
+            stack_offset,
             self.gen_expr(&n.vardef_value())?
         ))
+    }
+
+    fn gen_var(&mut self, n: &Node) -> Result<String, Error> {
+        let offset: i32 = self.scope.find_vardef(n.var_name()).unwrap().stack_offset;
+        let dtype: Dtype = n.dtype(&self.scope);
+        Ok(format!("{} [rbp{:+}]", dtype.variant.deref(), offset))
     }
 
     fn gen_str(&mut self, value: String) -> Result<String, Error> {
