@@ -24,20 +24,20 @@ pub struct Preprocessor {
 }
 
 impl Definition {
-    fn new(name: String, expr: Option<String>) -> Self {
-        Self { name, expr }
+    fn new(name: &str, expr: Option<&str>) -> Self {
+        Self { name: name.to_string(), expr: expr.map(str::to_string) }
     }
 }
 
 impl IfPair {
-    fn new(variant: IfType, expr: String, start: usize) -> Self {
-        Self { variant, if_expr: expr, start }
+    fn new(variant: IfType, expr: &str, start: usize) -> Self {
+        Self { variant, if_expr: expr.to_string(), start }
     }
 }
 
 impl Preprocessor {
-    pub fn new(prog: String) -> Self {
-        Self { prog, defs: vec![Vec::new()], pending_ifs: Vec::new() }
+    pub fn new(prog: &str) -> Self {
+        Self { prog: prog.to_string(), defs: vec![Vec::new()], pending_ifs: Vec::new() }
     }
 
     pub fn preprocess(&mut self) {
@@ -119,7 +119,7 @@ impl Preprocessor {
         }
 
         // self.defs is guaranteed to have last element
-        self.defs.iter_mut().last().unwrap().push(Definition::new(id, if expr.is_empty() { None } else { Some(expr) }));
+        self.defs.iter_mut().last().unwrap().push(Definition::new(id.as_str(), if expr.is_empty() { None } else { Some(&expr) }));
         self.prog.replace_range(start..index, "");
     }
 
@@ -135,7 +135,7 @@ impl Preprocessor {
             index += 1;
         }
 
-        self.pending_ifs.push(IfPair::new(variant, id, start));
+        self.pending_ifs.push(IfPair::new(variant, id.as_str(), start));
         self.prog.replace_range(start..index, "");
     }
 

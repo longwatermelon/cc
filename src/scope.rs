@@ -77,7 +77,7 @@ impl Scope {
 
     /// Doesn't modify stack offset, uses self.stack_offset()
     pub fn push_vardef(&mut self, n: &Node, err_line: usize) -> Result<(), Error> {
-        if self.find_vardef(n.vardef_name(), err_line).is_ok() {
+        if self.find_vardef(&n.vardef_name(), err_line).is_ok() {
             return Err(Error::new(format!("redefinition of variable {}", n.vardef_name()), n.line));
         }
 
@@ -98,19 +98,20 @@ impl Scope {
 
     pub fn push_fdef(&mut self, n: &Node) -> Result<(), Error> {
         let NodeVariant::Fdef { name: _, .. } = n.variant.as_ref() else { panic!("push_fdef received {:?}", n.variant) };
+        // TODO set body of declared function
         self.fdefs.push(CFdef::new(n, self)?);
 
         Ok(())
     }
 
-    pub fn find_fdef(&self, name: String, err_line: usize) -> Result<&CFdef, Error> {
+    pub fn find_fdef(&self, name: &str, err_line: usize) -> Result<&CFdef, Error> {
         self.fdefs.iter().find(|&x| {
             let NodeVariant::Fdef { name: fname, .. } = x.node.variant.as_ref() else { unreachable!() };
-            fname.clone() == name
+            fname == name
         }).ok_or(Error::new(format!("function {} does not exist.", name), err_line))
     }
 
-    pub fn find_vardef(&self, name: String, err_line: usize) -> Result<&CVardef, Error> {
+    pub fn find_vardef(&self, name: &str, err_line: usize) -> Result<&CVardef, Error> {
         for layer in &self.layers {
             let result: Option<&CVardef> = layer.vardefs.iter().find(|&x|
                 x.node.vardef_name() == name

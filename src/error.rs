@@ -13,7 +13,7 @@ impl Error {
         }
     }
 
-    pub fn print(&self, prog: String) {
+    pub fn print(&self, prog: &str) {
         let split: Vec<&str> = prog.split('\n').collect();
         println!("{}: Line {}: {}", "error".bright_red(), self.line, self.message);
         let longest: usize = *[self.line - 1, self.line, self.line + 1].map(|x| x.to_string().len()).iter().max().unwrap();

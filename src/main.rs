@@ -17,7 +17,7 @@ use std::process::Command;
 
 fn handle_err<T>(res: Result<T, Error>, prog: &str) -> T {
     if let Err(e) = res {
-        e.print(String::from(prog));
+        e.print(prog);
         std::process::exit(1);
     } else {
         res.unwrap()
@@ -32,18 +32,18 @@ fn main() {
     }
 
     // Preprocessor
-    let prog: String = fs::read_to_string(args[0].as_str()).expect("Couldn't read file examples/test.c.");
-    let mut preprocessor: Preprocessor = Preprocessor::new(prog.clone());
+    let prog: String = fs::read_to_string(&args[0]).expect("Couldn't read file examples/test.c.");
+    let mut preprocessor: Preprocessor = Preprocessor::new(&prog);
     preprocessor.preprocess();
     let processed: String = preprocessor.result();
 
     // Parser
-    let mut parser: Parser = Parser::new(processed).unwrap();
-    let root: Node = handle_err(parser.parse(), prog.as_str());
+    let mut parser: Parser = Parser::new(&processed).unwrap();
+    let root: Node = handle_err(parser.parse(), &prog);
 
     // Assembly generation
     let mut generator: Gen = Gen::new();
-    let result: String = handle_err(generator.gen(&root), prog.as_str());
+    let result: String = handle_err(generator.gen(&root), &prog);
 
     // Write to file
     let mut f = fs::File::create("a.s").expect("Unable to create file 'a.s'.");

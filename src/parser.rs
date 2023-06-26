@@ -11,7 +11,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(contents: String) -> Result<Self, Error> {
+    pub fn new(contents: &str) -> Result<Self, Error> {
         let mut lexer: Lexer = Lexer::new(contents);
         let curr = lexer.next()?;
         Ok(Self {
@@ -129,7 +129,7 @@ impl Parser {
     }
 
     fn parse_dtype(&mut self) -> Result<Dtype, Error> {
-        let mut dtype: Dtype = Dtype::new(self.curr.value.clone())?;
+        let mut dtype: Dtype = Dtype::new(&self.curr.value)?;
         self.expect(TokenType::Id)?;
         if let DtypeVariant::Struct { name } = &mut dtype.variant {
             *name = self.curr.value.clone();
@@ -224,7 +224,7 @@ impl Parser {
         // Start on name
         let name: String = self.curr.value.clone();
 
-        if Dtype::new(name.clone()).is_ok() {
+        if Dtype::new(&name).is_ok() {
             self.parse_vardef()
         } else {
             self.expect(TokenType::Id)?;

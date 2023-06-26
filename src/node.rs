@@ -18,8 +18,8 @@ pub struct Dtype {
 
 impl DtypeVariant {
     /// Does not fill out enum variant fields, only determines the enum variant type
-    pub fn new(dtype: String) -> Result<Self, Error> {
-        match dtype.as_str() {
+    pub fn new(dtype: &str) -> Result<Self, Error> {
+        match dtype {
             "int" => Ok(DtypeVariant::Int),
             "char" => Ok(DtypeVariant::Char),
             "void" => Ok(DtypeVariant::Void),
@@ -56,7 +56,7 @@ impl DtypeVariant {
 }
 
 impl Dtype {
-    pub fn new(dtype: String) -> Result<Self, Error> {
+    pub fn new(dtype: &str) -> Result<Self, Error> {
         Ok(Self { variant: DtypeVariant::new(dtype)?, memops: Vec::new() })
     }
 
@@ -155,10 +155,10 @@ impl Node {
                 NodeVariant::Str {..} => Dtype::from_fields_memops(DtypeVariant::Char, vec!['*']),
                 NodeVariant::Int {..} => Dtype::from_fields(DtypeVariant::Int),
                 NodeVariant::Char {..} => Dtype::from_fields(DtypeVariant::Char),
-                NodeVariant::Fcall { name, .. } => scope.find_fdef(name.clone(), self.line)?.node.dtype(scope)?,
+                NodeVariant::Fcall { name, .. } => scope.find_fdef(&name, self.line)?.node.dtype(scope)?,
                 NodeVariant::Fdef { rtype, .. } => rtype.clone(),
                 NodeVariant::Vardef { dtype, .. } => dtype.clone(),
-                NodeVariant::Var { name } => scope.find_vardef(name.clone(), self.line)?.node.dtype(scope)?,
+                NodeVariant::Var { name } => scope.find_vardef(&name, self.line)?.node.dtype(scope)?,
                 NodeVariant::InitList { dtype, .. } => dtype.clone(),
                 _ => panic!("{:?} doesn't have a dtype.", self.variant)
             }

@@ -46,11 +46,11 @@ impl Gen {
             // NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Char { value } => Ok((*value as u8).to_string()),
             NodeVariant::Var { name } => {
-                let cv: &CVardef = self.scope.find_vardef(name.clone(), n.line)?;
+                let cv: &CVardef = self.scope.find_vardef(&name, n.line)?;
                 Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope)?.variant.deref(), cv.stack_offset))
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
-            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name.clone(), n.line)?.node.dtype(&self.scope)?.variant.register("ax")),
+            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(&name, n.line)?.node.dtype(&self.scope)?.variant.register("ax")),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant)
         }
     }
@@ -60,7 +60,7 @@ impl Gen {
         let mut res: String = String::new();
 
         for n in values {
-            res.push_str(self.gen_expr(n)?.as_str());
+            res.push_str(&self.gen_expr(n)?);
         }
 
         Ok(res)
@@ -75,7 +75,7 @@ impl Gen {
 
         // Push params into scope so function body can access them
         self.scope.push_fdef(n)?;
-        let fdef: CFdef = self.scope.find_fdef(name.clone(), n.line)?.clone();
+        let fdef: CFdef = self.scope.find_fdef(&name, n.line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
         for (i, param) in params.clone().iter().enumerate() {
             self.scope.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
@@ -93,11 +93,11 @@ impl Gen {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
         Ok(
             self.gen_expr(value)? +
-            format!(
+            &format!(
                 "\n\tmov {}, {}",
                 value.dtype(&self.scope)?.variant.register("ax"),
                 self.gen_repr(value)?
-            ).as_str()
+            )
         )
     }
 
@@ -107,7 +107,7 @@ impl Gen {
         let NodeVariant::Fcall { name, args } = n.variant.as_ref() else { unreachable!() };
         let mut passed_args: Vec<Node> = Vec::new();
 
-        let fdef: CFdef = self.scope.find_fdef(name.clone(), n.line)?.clone();
+        let fdef: CFdef = self.scope.find_fdef(&name, n.line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
 
         if args.len() != params.len() {
@@ -131,10 +131,10 @@ impl Gen {
         }
 
         for arg in passed_args.iter().rev() {
-            res.push_str(self.gen_vardef(arg)?.as_str());
+            res.push_str(&self.gen_vardef(arg)?);
         }
 
-        res.push_str(format!("\n\tcall {}", name).as_str());
+        res.push_str(&format!("\n\tcall {}", name));
 
         for _ in 0..passed_args.len() {
             let node: Node = self.scope.pop_vardef().node;
@@ -152,7 +152,7 @@ impl Gen {
 
         self.scope.stack_offset_change_n(n)?;
         self.scope.push_vardef(n, n.line)?;
-        res.push_str(self.gen_stack_push(value)?.as_str());
+        res.push_str(&self.gen_stack_push(value)?);
 
         Ok(res)
     }
@@ -175,7 +175,7 @@ impl Gen {
         if pushed_repr.contains("[") && pushed_repr.contains("]") {
             // Move to register first, change pushed_repr to said register
             let reg: String = pushed.dtype(&self.scope)?.variant.register("bx");
-            res.push_str(format!("\n\tmov {}, {}", reg, pushed_repr).as_str());
+            res.push_str(&format!("\n\tmov {}, {}", reg, pushed_repr));
             pushed_repr = reg;
         }
 
@@ -193,10 +193,10 @@ impl Gen {
 
     fn gen_str(&mut self, value: String) -> Result<String, Error> {
         self.data.push_str(
-            format!(
+            &format!(
                 "\tstr{}: db \"{}\", 10\n\tstr{}len: equ $ - str{}\n",
                 self.strnum, value, self.strnum, self.strnum
-            ).as_str()
+            )
         );
         self.strnum += 1;
 

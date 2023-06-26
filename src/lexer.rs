@@ -102,9 +102,9 @@ impl Token {
 }
 
 impl Lexer {
-    pub fn new(contents: String) -> Self {
+    pub fn new(contents: &str) -> Self {
         Self {
-            contents: contents.clone(),
+            contents: contents.to_string(),
             line: 1,
             index: 0,
             ch: contents.chars().next().unwrap()
