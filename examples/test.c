@@ -1,6 +1,6 @@
 int func(int a, int b)
 {
-    return a;
+    return b;
 }
 
 int main()

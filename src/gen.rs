@@ -105,7 +105,7 @@ impl Gen {
             passed_args.push(param);
         }
 
-        for arg in &passed_args {
+        for arg in passed_args.iter().rev() {
             res.push_str(self.gen_vardef(arg)?.as_str());
         }
 
