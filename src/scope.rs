@@ -13,6 +13,12 @@ pub struct CFdef {
     pub param_stack_offsets: Vec<i32>
 }
 
+#[derive(Clone)]
+pub struct CStruct {
+    pub node: Node,
+    pub memb_stack_offsets: Vec<i32>
+}
+
 pub struct ScopeLayer {
     vardefs: Vec<CVardef>,
     stack_offset: i32
@@ -20,7 +26,8 @@ pub struct ScopeLayer {
 
 pub struct Scope {
     layers: Vec<ScopeLayer>,
-    fdefs: Vec<CFdef>
+    fdefs: Vec<CFdef>,
+    structs: Vec<CStruct>
 }
 
 impl CVardef {
@@ -44,6 +51,21 @@ impl CFdef {
     }
 }
 
+impl CStruct {
+    pub fn new(node: &Node, scope: &Scope) -> Result<Self, Error> {
+        let mut stack_offsets: Vec<i32> = Vec::new();
+        let NodeVariant::Struct { fields, .. } = node.variant.as_ref() else { unreachable!() };
+
+        let mut offset: i32 = 16;
+        for field in fields.iter() {
+            stack_offsets.push(offset);
+            offset += field.dtype(scope)?.variant.num_bytes();
+        }
+
+        Ok(Self { node: node.clone(), memb_stack_offsets: stack_offsets })
+    }
+}
+
 impl ScopeLayer {
     fn new() -> Self {
         Self { vardefs: Vec::new(), stack_offset: 0 }
@@ -60,7 +82,7 @@ impl ScopeLayer {
 
 impl Scope {
     pub fn new() -> Self {
-        Self { layers: vec![ScopeLayer::new()], fdefs: Vec::new() }
+        Self { layers: vec![ScopeLayer::new()], fdefs: Vec::new(), structs: Vec::new() }
     }
 
     pub fn push_layer(&mut self) {
@@ -123,11 +145,41 @@ impl Scope {
         Ok(())
     }
 
+    pub fn push_struct(&mut self, n: &Node) -> Result<(), Error> {
+        let NodeVariant::Struct { name, .. } = n.variant.as_ref() else { panic!("push_fdef received {:?}", n.variant) };
+
+        // Check if fdef exists
+        if let Ok(st) = self.find_struct(name, n.line) {
+            let NodeVariant::Struct { name: orig_name, fields: orig_fields } = st.node.variant.as_ref() else { unreachable!() };
+
+            // If declaration, replace. Otherwise it's a redef error
+            if orig_fields.is_empty() {
+                // Remove original struct
+                self.fdefs.retain(|x| {
+                    let NodeVariant::Struct { name: sname, .. } = x.node.variant.as_ref() else { unreachable!() };
+                    sname != name
+                });
+            } else {
+                return Err(Error::new(format!("redefinition of struct '{}'.", orig_name), n.line));
+            }
+        }
+
+        self.structs.push(CStruct::new(n, self)?);
+        Ok(())
+    }
+
     pub fn find_fdef(&self, name: &str, err_line: usize) -> Result<&CFdef, Error> {
         self.fdefs.iter().find(|&x| {
             let NodeVariant::Fdef { name: fname, .. } = x.node.variant.as_ref() else { unreachable!() };
             fname == name
         }).ok_or(Error::new(format!("function '{}' does not exist.", name), err_line))
+    }
+
+    pub fn find_struct(&self, name: &str, err_line: usize) -> Result<&CStruct, Error> {
+        self.structs.iter().find(|&x| {
+            let NodeVariant::Struct { name: orig_name, .. } = x.node.variant.as_ref() else { unreachable!() };
+            name == orig_name
+        }).ok_or(Error::new(format!("struct '{}' does not exist.", name), err_line))
     }
 
     pub fn find_vardef(&self, name: &str, err_line: usize) -> Result<&CVardef, Error> {
