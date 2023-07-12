@@ -1,67 +1,10 @@
+use super::Gen;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
-use crate::scope::{Scope, ScopeLayer, CVardef, CFdef};
-
-pub struct Gen {
-    scope: Scope,
-    data: String,
-    strnum: i32
-}
+use crate::scope::{ScopeLayer, CVardef, CFdef};
 
 impl Gen {
-    pub fn new() -> Self {
-        Self {
-            scope: Scope::new(),
-            data: String::new(),
-            strnum: 0
-        }
-    }
-
-    pub fn gen(&mut self, root: &Node) -> Result<String, Error> {
-        self.data = String::from("section .rodata\n");
-        let start: String = String::from("global _start\nsection .text\n_start:\n\tcall main\n\tmov rdi, rax\n\tmov rax, 60\n\tsyscall\n");
-        let body: String = self.gen_expr(root)?;
-
-        Ok(format!("{}{}\n{}", start, body, self.data))
-    }
-
-    fn gen_expr(&mut self, n: &Node) -> Result<String, Error> {
-        match n.variant.as_ref() {
-            NodeVariant::Cpd {..} => self.gen_cpd(n),
-            NodeVariant::Fdef {..} => self.gen_fdef(n),
-            NodeVariant::Return {..} => self.gen_return(n),
-            NodeVariant::Vardef {..} => self.gen_vardef(n),
-            NodeVariant::Var {..} => self.gen_var(n),
-            NodeVariant::Fcall {..} => self.gen_fcall(n),
-            NodeVariant::InitList {..} => self.gen_init_list(n),
-            NodeVariant::Struct {..} => {
-                self.scope.push_struct(n)?;
-                Ok(String::new())
-            },
-            NodeVariant::Str { value } => self.gen_str(value.clone()),
-            NodeVariant::Noop |
-            NodeVariant::Int {..} |
-            NodeVariant::Char {..} => Ok(String::new()),
-            _ => panic!("{:?} not implemented yet [EXPR]", n.variant)
-        }
-    }
-
-    fn gen_repr(&mut self, n: &Node) -> Result<String, Error> {
-        match n.variant.as_ref() {
-            NodeVariant::Int { value } => Ok(value.to_string()),
-            // NodeVariant::Str { value } => self.gen_str(value.clone()),
-            NodeVariant::Char { value } => Ok((*value as u8).to_string()),
-            NodeVariant::Var { name } => {
-                let cv: &CVardef = self.scope.find_vardef(name, n.line)?;
-                Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope)?.variant.deref(&self.scope)?, cv.stack_offset))
-            },
-            NodeVariant::Vardef { value, .. } => self.gen_repr(value),
-            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register("ax", &self.scope)?),
-            _ => panic!("{:?} not implemented yet [REPR]", n.variant)
-        }
-    }
-
-    fn gen_cpd(&mut self, n: &Node) -> Result<String, Error> {
+    pub fn gen_cpd(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Cpd { values } = n.variant.as_ref() else { unreachable!() };
         let mut res: String = String::new();
 
@@ -72,7 +15,7 @@ impl Gen {
         Ok(res)
     }
 
-    fn gen_fdef(&mut self, n: &Node) -> Result<String, Error> {
+    pub fn gen_fdef(&mut self, n: &Node) -> Result<String, Error> {
         // Scope switches, so no nesting
         let prev_layer: ScopeLayer = self.scope.pop_layer();
 
@@ -100,7 +43,7 @@ impl Gen {
         Ok(res)
     }
 
-    fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
+    pub fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
         Ok(
             self.gen_expr(value)? +
@@ -112,7 +55,7 @@ impl Gen {
         )
     }
 
-    fn gen_fcall(&mut self, n: &Node) -> Result<String, Error> {
+    pub fn gen_fcall(&mut self, n: &Node) -> Result<String, Error> {
         let mut res: String = String::new();
 
         // Get args
@@ -161,7 +104,7 @@ impl Gen {
         Ok(res)
     }
 
-    fn gen_init_list(&mut self, n: &Node) -> Result<String, Error> {
+    pub fn gen_init_list(&mut self, n: &Node) -> Result<String, Error> {
         let mut res: String = String::new();
         let NodeVariant::InitList { dtype: _, fields } = n.variant.as_ref() else { unreachable!() };
         for field in fields {
@@ -172,7 +115,7 @@ impl Gen {
         Ok(res)
     }
 
-    fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
+    pub fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
         // First prepare the value before pushing vardef
         // onto stack to prevent holes in the stack.
         let NodeVariant::Vardef { value, .. } = n.variant.as_ref() else { unreachable!() };
@@ -201,7 +144,7 @@ impl Gen {
     /// Before you call this function:
     /// * If the stack needs to grow, change the stack offset before this function call.
     /// * gen_expr the value getting pushed onto the stack if needed, this function won't do it.
-    fn gen_stack_push(&mut self, pushed: &Node) -> Result<String, Error> {
+    pub fn gen_stack_push(&mut self, pushed: &Node) -> Result<String, Error> {
         Ok(
             match pushed.dtype(&self.scope)?.variant {
                 // gen_init_list pushes variables onto the stack
@@ -222,7 +165,7 @@ impl Gen {
         )
     }
 
-    fn gen_stack_modify(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
+    pub fn gen_stack_modify(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
         let mut res: String = String::new();
         let mut pushed_repr: String = self.gen_repr(pushed)?;
         // Mem - mem ops not allowed in mov
@@ -241,11 +184,11 @@ impl Gen {
         ).as_str())
     }
 
-    fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {
+    pub fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {
         Ok(String::new())
     }
 
-    fn gen_str(&mut self, value: String) -> Result<String, Error> {
+    pub fn gen_str(&mut self, value: String) -> Result<String, Error> {
         self.data.push_str(
             &format!(
                 "\tstr{}: db \"{}\", 10\n\tstr{}len: equ $ - str{}\n",

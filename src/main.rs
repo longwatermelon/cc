@@ -3,14 +3,14 @@ mod lexer;
 mod node;
 mod parser;
 mod preprocess;
-mod gen;
 mod scope;
+mod asm;
 
 use error::Error;
 use parser::Parser;
 use node::Node;
 use preprocess::Preprocessor;
-use gen::Gen;
+use asm::Gen;
 use std::fs;
 use std::io::Write;
 use std::process::Command;
