@@ -5,12 +5,13 @@ struct A
     int c;
 };
 
-void f(struct A tmp)
+int f(struct A tmp)
 {
+    return tmp.a;
 }
 
 int main()
 {
-    f((struct A){ .a = 1, .b = 'b', .c = 2 });
+    return f((struct A){ .a = 1, .b = 'b', .c = 2 });
 }
 

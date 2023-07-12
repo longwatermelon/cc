@@ -209,8 +209,6 @@ impl Gen {
                     self.scope.stack_offset_change_n(pushed, 1)?;
                     let pushed: &Node = pushed.strip(&self.scope)?;
 
-                    // TODO gen_init_list is getting passed a NodeVariant::VAR due to
-                    // function param stack push
                     self.gen_init_list(&pushed.clone())?
                 },
                 _ => {

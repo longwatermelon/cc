@@ -185,6 +185,7 @@ impl Node {
         )
     }
 
+    /// For var / vardef, everything else will be returned as is.
     pub fn strip<'a>(&'a self, scope: &'a Scope) -> Result<&'a Node, Error> {
         Ok(
             match self.variant.as_ref() {
