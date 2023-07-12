@@ -207,7 +207,11 @@ impl Gen {
                 // gen_init_list pushes variables onto the stack
                 DtypeVariant::Struct {..} => {
                     self.scope.stack_offset_change_n(pushed, 1)?;
-                    self.gen_init_list(pushed)?
+                    let pushed: &Node = pushed.strip(&self.scope)?;
+
+                    // TODO gen_init_list is getting passed a NodeVariant::VAR due to
+                    // function param stack push
+                    self.gen_init_list(&pushed.clone())?
                 },
                 _ => {
                     format!(

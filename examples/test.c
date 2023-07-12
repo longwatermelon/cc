@@ -5,9 +5,12 @@ struct A
     int c;
 };
 
+void f(struct A tmp)
+{
+}
+
 int main()
 {
-    int x = 1;
-    struct A a = (struct A){ .a = x, .b = 'b', .c = 2 };
+    f((struct A){ .a = 1, .b = 'b', .c = 2 });
 }
 

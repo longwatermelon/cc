@@ -185,6 +185,16 @@ impl Node {
         )
     }
 
+    pub fn strip<'a>(&'a self, scope: &'a Scope) -> Result<&'a Node, Error> {
+        Ok(
+            match self.variant.as_ref() {
+                NodeVariant::Var { name } => scope.find_vardef(name.as_str(), self.line)?.node.strip(scope)?,
+                NodeVariant::Vardef { value, .. } => value.strip(scope)?,
+                _ => self,
+            }
+        )
+    }
+
     pub fn var_name(&self) -> String {
         match self.variant.as_ref() {
             NodeVariant::Unop { r, .. } => r.var_name(),
