@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::node::{Node, NodeVariant, Dtype};
+use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::scope::{Scope, ScopeLayer, CVardef, CFdef};
 
 pub struct Gen {
@@ -33,6 +33,11 @@ impl Gen {
             NodeVariant::Vardef {..} => self.gen_vardef(n),
             NodeVariant::Var {..} => self.gen_var(n),
             NodeVariant::Fcall {..} => self.gen_fcall(n),
+            NodeVariant::InitList {..} => self.gen_init_list(n),
+            NodeVariant::Struct {..} => {
+                self.scope.push_struct(n)?;
+                Ok(String::new())
+            },
             NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Noop |
             NodeVariant::Int {..} |
@@ -48,10 +53,10 @@ impl Gen {
             NodeVariant::Char { value } => Ok((*value as u8).to_string()),
             NodeVariant::Var { name } => {
                 let cv: &CVardef = self.scope.find_vardef(name, n.line)?;
-                Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope)?.variant.deref(), cv.stack_offset))
+                Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope)?.variant.deref(&self.scope)?, cv.stack_offset))
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
-            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register("ax")),
+            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register("ax", &self.scope)?),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant)
         }
     }
@@ -101,7 +106,7 @@ impl Gen {
             self.gen_expr(value)? +
             &format!(
                 "\n\tmov {}, {}",
-                value.dtype(&self.scope)?.variant.register("ax"),
+                value.dtype(&self.scope)?.variant.register("ax", &self.scope)?,
                 self.gen_repr(value)?
             )
         )
@@ -156,6 +161,17 @@ impl Gen {
         Ok(res)
     }
 
+    fn gen_init_list(&mut self, n: &Node) -> Result<String, Error> {
+        let mut res: String = String::new();
+        let NodeVariant::InitList { dtype: _, fields } = n.variant.as_ref() else { unreachable!() };
+        for field in fields {
+            self.scope.stack_offset_change_n(&field.1, -1)?;
+            res.push_str(self.gen_stack_push(&field.1)?.as_str());
+        }
+
+        Ok(res)
+    }
+
     fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {
         // First prepare the value before pushing vardef
         // onto stack to prevent holes in the stack.
@@ -182,14 +198,25 @@ impl Gen {
     }
 
     /// Doesn't modify scope stack offset, uses self.scope.stack_offset().
-    /// No gen_expr.
+    /// Before you call this function:
+    /// * If the stack needs to grow, change the stack offset before this function call.
+    /// * gen_expr the value getting pushed onto the stack if needed, this function won't do it.
     fn gen_stack_push(&mut self, pushed: &Node) -> Result<String, Error> {
         Ok(
-            format!(
-                "\n\tsub rsp, {}{}",
-                pushed.dtype(&self.scope)?.variant.num_bytes(),
-                self.gen_stack_modify(pushed, self.scope.stack_offset())?
-            )
+            match pushed.dtype(&self.scope)?.variant {
+                // gen_init_list pushes variables onto the stack
+                DtypeVariant::Struct {..} => {
+                    self.scope.stack_offset_change_n(pushed, 1)?;
+                    self.gen_init_list(pushed)?
+                },
+                _ => {
+                    format!(
+                        "\n\tsub rsp, {}{}",
+                        pushed.dtype(&self.scope)?.variant.num_bytes(&self.scope)?,
+                        self.gen_stack_modify(pushed, self.scope.stack_offset())?
+                    )
+                },
+            }
         )
     }
 
@@ -199,14 +226,14 @@ impl Gen {
         // Mem - mem ops not allowed in mov
         if pushed_repr.contains('[') && pushed_repr.contains(']') {
             // Move to register first, change pushed_repr to said register
-            let reg: String = pushed.dtype(&self.scope)?.variant.register("bx");
+            let reg: String = pushed.dtype(&self.scope)?.variant.register("bx", &self.scope)?;
             res.push_str(&format!("\n\tmov {}, {}", reg, pushed_repr));
             pushed_repr = reg;
         }
 
         Ok(res + format!(
             "\n\tmov {} [rbp{:+}], {}",
-            pushed.dtype(&self.scope)?.variant.deref(),
+            pushed.dtype(&self.scope)?.variant.deref(&self.scope)?,
             target_stack_offset,
             pushed_repr
         ).as_str())

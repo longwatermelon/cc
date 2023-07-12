@@ -44,7 +44,7 @@ impl CFdef {
         let mut offset: i32 = 16;
         for param in params.iter().rev() {
             stack_offsets.push(offset);
-            offset += param.dtype(scope)?.variant.num_bytes();
+            offset += param.dtype(scope)?.variant.num_bytes(scope)?;
         }
 
         Ok(Self { node: node.clone(), param_stack_offsets: stack_offsets })
@@ -59,7 +59,7 @@ impl CStruct {
         let mut offset: i32 = 16;
         for field in fields.iter() {
             stack_offsets.push(offset);
-            offset += field.dtype(scope)?.variant.num_bytes();
+            offset += field.dtype(scope)?.variant.num_bytes(scope)?;
         }
 
         Ok(Self { node: node.clone(), memb_stack_offsets: stack_offsets })
@@ -205,7 +205,7 @@ impl Scope {
     }
 
     pub fn stack_offset_change_n(&mut self, n: &Node, direction: i32) -> Result<(), Error> {
-        self.stack_offset_change(direction * n.dtype(self)?.variant.num_bytes());
+        self.stack_offset_change(direction * n.dtype(self)?.variant.num_bytes(self)?);
         Ok(())
     }
 }

@@ -29,30 +29,38 @@ impl DtypeVariant {
         }
     }
 
-    pub fn num_bytes(&self) -> i32 {
-        match self {
-            DtypeVariant::Int => 4,
-            DtypeVariant::Char => 1,
-            DtypeVariant::Void => 0,
-            DtypeVariant::Struct {..} => todo!()
-        }
+    pub fn num_bytes(&self, scope: &Scope) -> Result<i32, Error> {
+        Ok(
+            match self {
+                DtypeVariant::Int => 4,
+                DtypeVariant::Char => 1,
+                DtypeVariant::Void => 0,
+                DtypeVariant::Struct { name } => scope.find_struct(name.as_str(), 0)?
+                                                      .memb_stack_offsets
+                                                      .iter().sum()
+            }
+        )
     }
 
-    pub fn deref(&self) -> String {
-        match self.num_bytes() {
-            1 => "BYTE",
-            4 => "DWORD",
-            8 => "QWORD",
-            _ => panic!("DtypeVariant::deref invalid size of {}", self.num_bytes())
-        }.to_string()
+    pub fn deref(&self, scope: &Scope) -> Result<String, Error> {
+        Ok(
+            match self.num_bytes(scope)? {
+                1 => "BYTE",
+                4 => "DWORD",
+                8 => "QWORD",
+                _ => panic!("DtypeVariant::deref invalid size of {}", self.num_bytes(scope)?)
+            }.to_string()
+        )
     }
 
-    pub fn register(&self, suffix: &str) -> String {
-        match self.num_bytes() {
-            1 | 4 => "e",
-            8 => "r",
-            _ => panic!("DtypeVariant::register invalid size of {}", self.num_bytes())
-        }.to_string() + suffix
+    pub fn register(&self, suffix: &str, scope: &Scope) -> Result<String, Error> {
+        Ok(
+            match self.num_bytes(scope)? {
+                1 | 4 => "e",
+                8 => "r",
+                _ => panic!("DtypeVariant::register invalid size of {}", self.num_bytes(scope)?)
+            }.to_string() + suffix
+        )
     }
 }
 
