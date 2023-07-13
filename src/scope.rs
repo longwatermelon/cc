@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::node::{Node, NodeVariant};
+use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::cdefs::{CFdef, CVardef, CStruct};
 
 pub struct ScopeLayer {
@@ -127,6 +127,14 @@ impl Scope {
             let NodeVariant::Struct { name: orig_name, .. } = x.node.variant.as_ref() else { unreachable!() };
             name == orig_name
         }).ok_or(Error::new(format!("struct '{}' does not exist.", name), err_line))
+    }
+
+    pub fn find_struct_dtype(&self, dtype: Dtype, err_line: usize) -> Result<&CStruct, Error> {
+        let DtypeVariant::Struct { name } = dtype.variant else {
+            panic!("[Scope::find_struct_dtype] Takes in DtypeVariant::Struct, but {:?} was passed.", dtype.variant);
+        };
+
+        self.find_struct(name.as_str(), err_line)
     }
 
     pub fn find_vardef(&self, name: &str, err_line: usize) -> Result<&CVardef, Error> {

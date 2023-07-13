@@ -1,7 +1,7 @@
 use crate::error::Error;
 use crate::lexer::TokenType;
 use crate::scope::Scope;
-use crate::cdefs::{CVardef, CStruct};
+use crate::cdefs::CStruct;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -38,7 +38,7 @@ impl DtypeVariant {
                 DtypeVariant::Void => 0,
                 DtypeVariant::Struct { name } => {
                     let NodeVariant::Struct { fields, .. } = scope.find_struct(name.as_str(), 0)?
-                                                                .node.variant.as_ref() else { unreachable!() };
+                                                        .node.variant.as_ref() else { unreachable!() };
                     let mut sum: i32 = 0;
                     for field in fields {
                         sum += field.dtype(scope)?.variant.num_bytes(scope)?;
@@ -64,7 +64,8 @@ impl DtypeVariant {
     pub fn register(&self, suffix: &str, scope: &Scope) -> Result<String, Error> {
         Ok(
             match self.num_bytes(scope)? {
-                1 | 4 => "e",
+                1 => "",
+                4 => "e",
                 8 => "r",
                 _ => panic!("[DtypeVariant::register] invalid size of {}", self.num_bytes(scope)?)
             }.to_string() + suffix
@@ -189,37 +190,41 @@ impl Node {
                 NodeVariant::Vardef { dtype, .. } => dtype.clone(),
                 NodeVariant::Var { name } => scope.find_vardef(name, self.line)?.node.dtype(scope)?,
                 NodeVariant::InitList { dtype, .. } => dtype.clone(),
-                // TODO r is a var type and when vardef lookup is
-                // done for struct member access r is not found
-                NodeVariant::Binop { l, r, btype } => {
+                NodeVariant::Binop { l, r, btype: TokenType::Dot } => {
                     // For struct member access, r.dtype will look for a variable
                     // with the same name as the struct member, which doesn't exist.
-                    // If right operand is a binop, find the dtype of that. Otherwise,
-                    // right operand has to be a var, so find the associated struct
-                    // and get the member variable dtype.
-                    if *btype == TokenType::Dot {
-                        // Right operand is binop
-                        if matches!(r.variant.as_ref(), NodeVariant::Binop {..}) {
-                            r.dtype(scope)?
-                        } else { // Right operand is var
-                            let NodeVariant::Var { name, .. } = r.variant.as_ref() else { unreachable!() };
-                            let vardef: &CVardef = scope.find_vardef(l.var_name().as_str(), l.line)?;
-                            let DtypeVariant::Struct { name: struct_name } = vardef.node.dtype(scope)?.variant
-                                                                             else { unreachable!() };
-                            let sdef: &CStruct = scope.find_struct(struct_name.as_str(), self.line)?;
 
-                            // Find relevant struct field
-                            let NodeVariant::Struct { fields, .. } = sdef.node.variant.as_ref()
-                                                                     else { unreachable!() };
-                            let field: &Node = fields.iter().find(|&x| {
-                                name == x.vardef_name().as_str()
-                            }).ok_or(Error::new(format!("No member variable '{}' in struct '{}'.", name, struct_name), self.line))?;
+                    // To fix this, find the struct type of the left operand, and then
+                    // find the dtype of the field node that the right operand represents.
 
-                            field.dtype(scope)?
-                        }
-                    } else {
-                        r.dtype(scope)?
+                    fn field_from_struct<'a>(sdef: &'a CStruct, field: &Node) -> Result<&'a Node, Error> {
+                        let NodeVariant::Var { name: field_name } = field.variant.as_ref() else { unreachable!() };
+                        let NodeVariant::Struct { name: struct_name, fields } = sdef.node.variant.as_ref() else { unreachable!() };
+
+                        fields.iter().find(|&x|
+                            field_name == x.vardef_name().as_str()
+                        ).ok_or(Error::new(format!("No member variable '{}' in struct '{}'.", field_name, struct_name), field.line))
                     }
+
+                    fn associated_sdef<'a>(n: &'a Node, scope: &'a Scope) -> Result<&'a CStruct, Error> {
+                        // If n is binop, find struct type of l and then using that,
+                        // get the struct type of r.
+                        // If n isn't a binop, just get the struct associated with n.
+                        if let NodeVariant::Binop { l, r, .. } = n.variant.as_ref() {
+                            let sdef: &CStruct = associated_sdef(l, scope)?;
+                            let field: &Node = field_from_struct(sdef, r)?;
+                            scope.find_struct_dtype(field.dtype(scope)?, n.line)
+                        } else {
+                            scope.find_struct_dtype(n.dtype(scope)?, n.line)
+                        }
+                    }
+
+                    // Get parent struct containing r
+                    let sdef: &CStruct = associated_sdef(l, scope)?;
+
+                    // Find relevant struct field
+                    let field: &Node = field_from_struct(sdef, r)?;
+                    field.dtype(scope)?
                 },
                 _ => panic!("{:?} doesn't have a dtype.", self.variant)
             }
