@@ -28,7 +28,7 @@ impl CFdef {
         let NodeVariant::Fdef { params, .. } = node.variant.as_ref() else { unreachable!() };
 
         let mut offset: i32 = 16;
-        for param in params.iter().rev() {
+        for param in params.iter() {
             stack_offsets.push(offset);
             offset += param.dtype(scope)?.variant.num_bytes(scope)?;
         }

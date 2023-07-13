@@ -5,9 +5,13 @@ struct A
     int c;
 };
 
+int f(int num, struct A tmp, char c)
+{
+    return num;
+}
+
 int main()
 {
-    struct A a = (struct A){ .a = 1, .b = 'b', .c = 2 };
-    return a.c;
+    return f(1, (struct A){ .a = 10, .b = 'a', .c = 20 }, 'a');
 }
 

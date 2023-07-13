@@ -42,13 +42,11 @@ impl Gen {
                                     ), l.line
                                 )
                             )?;
-        println!("{:?}", sdef.memb_stack_offsets);
         let offset: i32 = sdef.memb_stack_offsets[index];
         let memb_dtype: Dtype = fields[index].dtype(&self.scope)?;
 
         // mov register, member
         let vardef: &CVardef = self.scope.find_vardef(l.var_name().as_str(), l.line)?;
-        println!("{}", vardef.stack_offset);
         let offset: i32 = vardef.stack_offset + offset;
         Ok(format!(
             "\n\tmov {}, {}",
