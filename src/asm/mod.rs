@@ -1,13 +1,16 @@
 mod general;
+mod ops;
 
 use crate::error::Error;
-use crate::scope::{Scope, CVardef};
-use crate::node::{Node, NodeVariant};
+use crate::scope::Scope;
+use crate::cdefs::CVardef;
+use crate::node::{Node, NodeVariant, Dtype};
+use crate::lexer::TokenType;
 
 pub struct Gen {
     scope: Scope,
     data: String,
-    strnum: i32
+    strnum: i32,
 }
 
 impl Gen {
@@ -15,7 +18,7 @@ impl Gen {
         Self {
             scope: Scope::new(),
             data: String::new(),
-            strnum: 0
+            strnum: 0,
         }
     }
 
@@ -27,6 +30,7 @@ impl Gen {
         Ok(format!("{}{}\n{}", start, body, self.data))
     }
 
+    /// Generate instruction(s)
     pub fn gen_expr(&mut self, n: &Node) -> Result<String, Error> {
         match n.variant.as_ref() {
             NodeVariant::Cpd {..} => self.gen_cpd(n),
@@ -44,10 +48,12 @@ impl Gen {
             NodeVariant::Noop |
             NodeVariant::Int {..} |
             NodeVariant::Char {..} => Ok(String::new()),
-            _ => panic!("{:?} not implemented yet [EXPR]", n.variant)
+            NodeVariant::Binop {..} => self.gen_binop(n),
+            _ => panic!("{:?} not implemented yet [EXPR]", n.variant),
         }
     }
 
+    /// Generate an operand
     pub fn gen_repr(&mut self, n: &Node) -> Result<String, Error> {
         match n.variant.as_ref() {
             NodeVariant::Int { value } => Ok(value.to_string()),
@@ -59,8 +65,18 @@ impl Gen {
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
             NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register("ax", &self.scope)?),
-            _ => panic!("{:?} not implemented yet [REPR]", n.variant)
+            NodeVariant::Binop { btype: TokenType::Dot, .. } =>
+                n.dtype(&self.scope)?.variant.register("bx", &self.scope),
+            _ => panic!("{:?} not implemented yet [REPR]", n.variant),
         }
+    }
+
+    /// Represent stack at some offset as an operand
+    pub fn stack_repr(&self, dtype: &Dtype, offset: i32) -> Result<String, Error> {
+        Ok(format!(
+            "{} [rbp{:+}]",
+            dtype.variant.deref(&self.scope)?, offset
+        ))
     }
 }
 

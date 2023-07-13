@@ -1,69 +1,10 @@
-use crate::node::{Node, NodeVariant};
 use crate::error::Error;
-
-#[derive(Clone)]
-pub struct CVardef {
-    pub node: Node,
-    pub stack_offset: i32
-}
-
-#[derive(Clone)]
-pub struct CFdef {
-    pub node: Node,
-    pub param_stack_offsets: Vec<i32>
-}
-
-#[derive(Clone)]
-pub struct CStruct {
-    pub node: Node,
-    pub memb_stack_offsets: Vec<i32>
-}
+use crate::node::{Node, NodeVariant};
+use crate::cdefs::{CFdef, CVardef, CStruct};
 
 pub struct ScopeLayer {
     vardefs: Vec<CVardef>,
     stack_offset: i32
-}
-
-pub struct Scope {
-    layers: Vec<ScopeLayer>,
-    fdefs: Vec<CFdef>,
-    structs: Vec<CStruct>
-}
-
-impl CVardef {
-    pub fn new(node: &Node, stack_offset: i32) -> Self {
-        Self { node: node.clone(), stack_offset }
-    }
-}
-
-impl CFdef {
-    pub fn new(node: &Node, scope: &Scope) -> Result<Self, Error> {
-        let mut stack_offsets: Vec<i32> = Vec::new();
-        let NodeVariant::Fdef { params, .. } = node.variant.as_ref() else { unreachable!() };
-
-        let mut offset: i32 = 16;
-        for param in params.iter().rev() {
-            stack_offsets.push(offset);
-            offset += param.dtype(scope)?.variant.num_bytes(scope)?;
-        }
-
-        Ok(Self { node: node.clone(), param_stack_offsets: stack_offsets })
-    }
-}
-
-impl CStruct {
-    pub fn new(node: &Node, scope: &Scope) -> Result<Self, Error> {
-        let mut stack_offsets: Vec<i32> = Vec::new();
-        let NodeVariant::Struct { fields, .. } = node.variant.as_ref() else { unreachable!() };
-
-        let mut offset: i32 = 16;
-        for field in fields.iter() {
-            stack_offsets.push(offset);
-            offset += field.dtype(scope)?.variant.num_bytes(scope)?;
-        }
-
-        Ok(Self { node: node.clone(), memb_stack_offsets: stack_offsets })
-    }
 }
 
 impl ScopeLayer {
@@ -78,6 +19,12 @@ impl ScopeLayer {
     fn pop_vardef(&mut self) -> CVardef {
         self.vardefs.pop().unwrap()
     }
+}
+
+pub struct Scope {
+    layers: Vec<ScopeLayer>,
+    fdefs: Vec<CFdef>,
+    structs: Vec<CStruct>
 }
 
 impl Scope {

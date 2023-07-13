@@ -3,6 +3,7 @@ mod lexer;
 mod node;
 mod parser;
 mod preprocess;
+mod cdefs;
 mod scope;
 mod asm;
 

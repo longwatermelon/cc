@@ -1,7 +1,8 @@
 use super::Gen;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
-use crate::scope::{ScopeLayer, CVardef, CFdef};
+use crate::scope::ScopeLayer;
+use crate::cdefs::{CFdef, CVardef};
 
 impl Gen {
     pub fn gen_cpd(&mut self, n: &Node) -> Result<String, Error> {
@@ -107,7 +108,7 @@ impl Gen {
     pub fn gen_init_list(&mut self, n: &Node) -> Result<String, Error> {
         let mut res: String = String::new();
         let NodeVariant::InitList { dtype: _, fields } = n.variant.as_ref() else { unreachable!() };
-        for field in fields {
+        for field in fields.iter().rev() {
             self.scope.stack_offset_change_n(&field.1, -1)?;
             res.push_str(self.gen_stack_push(&field.1)?.as_str());
         }
