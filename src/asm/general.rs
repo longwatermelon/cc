@@ -47,11 +47,8 @@ impl Gen {
 
     pub fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
-        let prep: String = self.gen_expr(value)?;
         let reg: String = value.dtype(&self.scope)?.variant.register('a', &self.scope)?;
-        let mov: String = self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value))?;
-
-        Ok(format!("{}{}", prep, mov))
+        self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value))
     }
 
     pub fn gen_fcall(&mut self, n: &Node) -> Result<String, Error> {
