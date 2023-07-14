@@ -11,11 +11,11 @@ impl Gen {
         let NodeVariant::Binop { btype, l, r } = n.variant.as_ref() else { unreachable!() };
         match btype {
             TokenType::Dot => self.gen_memb_access(l, r),
-            TokenType::Equal => self.gen_assign(l, r),
+            TokenType::Equal => self.mov(AsmArg::Node(l), AsmArg::Node(r)),
             TokenType::Plus |
             TokenType::Minus |
             TokenType::Star |
-            TokenType::Div => self.add(AsmArg::Node(l), AsmArg::Node(r), *btype),
+            TokenType::Div => self.arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
     }
@@ -23,7 +23,7 @@ impl Gen {
     pub fn gen_memb_access(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
         // Member access must be an identifier
         if !matches!(r.variant.as_ref(), NodeVariant::Var {..}) {
-            return Err(Error::new(String::from("Member variable must be an identifier."), r.line));
+            return Err(Error::new(format!("Member variable must be an identifier. Received: '{:?}'", r), r.line));
         }
 
         // Only structs have member variables
@@ -70,10 +70,6 @@ impl Gen {
         let offset: i32 = l_offset + rel_offset;
         let reg: String = memb_dtype.variant.register('b', &self.scope)?;
         self.mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset))
-    }
-
-    pub fn gen_assign(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
-        self.mov(AsmArg::Node(l), AsmArg::Node(r))
     }
 }
 

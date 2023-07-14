@@ -67,6 +67,7 @@ impl TokenType {
 
     pub fn binop_weight(&self) -> i32 {
         match self {
+            TokenType::Dot => 3,
             TokenType::Plus  |
             TokenType::Minus |
             TokenType::Star  |
@@ -76,7 +77,7 @@ impl TokenType {
             TokenType::LessEqual |
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
-            TokenType::Dot |
+            // TokenType::Dot |
             TokenType::Arrow |
             TokenType::Equal => 1,
             TokenType::And |

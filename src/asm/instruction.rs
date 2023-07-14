@@ -49,7 +49,12 @@ impl Gen {
         let src_to_reg: String = format!("\n\tmov {}, {}", reg, src_repr);
         let reg_to_dest: String = format!("\n\tmov {}, {}", dest_repr, reg);
 
-        Ok(format!("{}{}", src_to_reg, reg_to_dest))
+        Ok(format!("{}{}{}{}",
+            dest.gen_expr_if_needed(self)?,
+            src.gen_expr_if_needed(self)?,
+            src_to_reg,
+            reg_to_dest
+        ))
     }
 
     pub fn extend_stack(&self, nbytes: i32) -> String {
@@ -57,7 +62,7 @@ impl Gen {
     }
 
     /// Result in eax
-    pub fn add(&mut self, a: AsmArg, b: AsmArg, op: TokenType) -> Result<String, Error> {
+    pub fn arithmetic(&mut self, a: AsmArg, b: AsmArg, op: TokenType) -> Result<String, Error> {
         let expr_a: String = a.gen_expr_if_needed(self)?;
         let expr_b: String = b.gen_expr_if_needed(self)?;
 
@@ -68,16 +73,17 @@ impl Gen {
         let b_to_reg: String = self.mov(AsmArg::Register(&reg_b), b)?;
 
         Ok(format!(
-            "{}{}{}{}\n\t{} {}, {}",
+            "{}{}{}{}\n\t{}",
             expr_a,
             expr_b,
             a_to_reg,
             b_to_reg,
             match op {
-                TokenType::Plus => "add",
+                TokenType::Plus => format!("add {}, {}", reg_a, reg_b),
+                TokenType::Minus => format!("sub {}, {}", reg_a, reg_b),
+                TokenType::Star => format!("mul {}", reg_b),
                 _ => unreachable!(),
-            },
-            reg_a, reg_b
+            }
         ))
     }
 }
