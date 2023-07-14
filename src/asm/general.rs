@@ -156,9 +156,12 @@ impl Gen {
                     self.gen_init_list(&pushed.clone())?
                 },
                 _ => {
-                    format!(
-                        "\n\tsub rsp, {}{}",
-                        pushed.dtype(&self.scope)?.variant.num_bytes(&self.scope)?,
+                    let nbytes: i32 = pushed.dtype(&self.scope)?
+                                            .variant
+                                            .num_bytes(&self.scope)?;
+
+                    format!("{}{}",
+                        self.extend_stack(nbytes),
                         self.gen_stack_modify(pushed, self.scope.stack_offset())?
                     )
                 },
