@@ -1,5 +1,5 @@
 use super::Gen;
-use super::instruction::MovArg;
+use super::instruction::AsmArg;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::lexer::TokenType;
@@ -12,6 +12,7 @@ impl Gen {
         match btype {
             TokenType::Dot => self.gen_memb_access(l, r),
             TokenType::Equal => self.gen_assign(l, r),
+            TokenType::Plus => self.add(AsmArg::Node(l), AsmArg::Node(r)),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
     }
@@ -65,11 +66,11 @@ impl Gen {
         // mov register, member
         let offset: i32 = l_offset + rel_offset;
         let reg: String = memb_dtype.variant.register('b', &self.scope)?;
-        self.mov(MovArg::Register(&reg), MovArg::Stack(memb_dtype, offset))
+        self.mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset))
     }
 
     pub fn gen_assign(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
-        self.mov(MovArg::Node(l), MovArg::Node(r))
+        self.mov(AsmArg::Node(l), AsmArg::Node(r))
     }
 }
 

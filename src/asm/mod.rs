@@ -73,6 +73,8 @@ impl Gen {
             NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register('a', &self.scope)?),
             NodeVariant::Binop { btype: TokenType::Dot, .. } =>
                 n.dtype(&self.scope)?.variant.register('b', &self.scope),
+            NodeVariant::Binop { btype: TokenType::Plus, .. } =>
+                n.dtype(&self.scope)?.variant.register('a', &self.scope),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant),
         }
     }

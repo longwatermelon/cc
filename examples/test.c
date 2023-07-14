@@ -24,11 +24,11 @@ int main()
         .nested = (struct Nested){
             .a = 'a',
             .b = 'b',
-            .c = 29
+            .c = 5
         },
         .c = 2
     };
 
-    return f(a);
+    return f(a) + 1 + 2;
 }
 

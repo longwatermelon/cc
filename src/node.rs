@@ -228,6 +228,7 @@ impl Node {
                     let field: &Node = field_from_struct(sdef, r)?;
                     field.dtype(scope)?
                 },
+                NodeVariant::Binop { l, .. } => l.dtype(scope)?,
                 _ => panic!("{:?} doesn't have a dtype.", self.variant)
             }
         )

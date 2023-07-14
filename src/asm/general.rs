@@ -1,5 +1,5 @@
 use super::Gen;
-use super::instruction::MovArg;
+use super::instruction::AsmArg;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::scope::ScopeLayer;
@@ -49,7 +49,7 @@ impl Gen {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
         let prep: String = self.gen_expr(value)?;
         let reg: String = value.dtype(&self.scope)?.variant.register('a', &self.scope)?;
-        let mov: String = self.mov(MovArg::Register(reg.as_str()), MovArg::Node(value))?;
+        let mov: String = self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value))?;
 
         Ok(format!("{}{}", prep, mov))
     }
@@ -171,8 +171,8 @@ impl Gen {
     pub fn gen_stack_modify(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
         let pushed_dtype: Dtype = pushed.dtype(&self.scope)?;
         self.mov(
-            MovArg::Stack(pushed_dtype, target_stack_offset),
-            MovArg::Node(pushed)
+            AsmArg::Stack(&pushed_dtype, target_stack_offset),
+            AsmArg::Node(pushed)
         )
     }
 
