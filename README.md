@@ -2,6 +2,8 @@
 C compiler
 
 # Todo
-* Struct support
-* Unops (including pointer / addressof), binops
+* Address of, dereference
+* Comparison operators
+* Control flow - if, while, for
+* Fix arithmetic bug, where register a is overwritten with the return value of rhs
 
