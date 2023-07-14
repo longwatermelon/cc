@@ -1,5 +1,6 @@
 mod general;
 mod ops;
+mod instruction;
 
 use crate::error::Error;
 use crate::scope::Scope;

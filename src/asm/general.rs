@@ -46,14 +46,14 @@ impl Gen {
 
     pub fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
-        Ok(
-            self.gen_expr(value)? +
-            &format!(
-                "\n\tmov {}, {}",
-                value.dtype(&self.scope)?.variant.register("ax", &self.scope)?,
-                self.gen_repr(value)?
-            )
-        )
+        let prep: String = self.gen_expr(value)?;
+
+        let reg: String = value.dtype(&self.scope)?.variant.register("ax", &self.scope)?;
+        let repr: String = self.gen_repr(value)?;
+
+        let mov: String = self.mov(reg.as_str(), repr.as_str());
+
+        Ok(prep + mov.as_str())
     }
 
     pub fn gen_fcall(&mut self, n: &Node) -> Result<String, Error> {
@@ -173,15 +173,15 @@ impl Gen {
         if pushed_repr.contains('[') && pushed_repr.contains(']') {
             // Move to register first, change pushed_repr to said register
             let reg: String = pushed.dtype(&self.scope)?.variant.register("bx", &self.scope)?;
-            res.push_str(&format!("\n\tmov {}, {}", reg, pushed_repr));
+            res.push_str(&self.mov(&reg, &pushed_repr));
             pushed_repr = reg;
         }
 
-        Ok(res + format!(
-            "\n\tmov {} [rbp{:+}], {}",
-            pushed.dtype(&self.scope)?.variant.deref(&self.scope)?,
-            target_stack_offset,
-            pushed_repr
+        let pushed_dtype: Dtype = pushed.dtype(&self.scope)?;
+        let stack_repr: String = self.stack_repr(&pushed_dtype, target_stack_offset)?;
+        Ok(res + self.mov(
+            &stack_repr,
+            &pushed_repr
         ).as_str())
     }
 
