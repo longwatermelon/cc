@@ -10,6 +10,7 @@ impl Gen {
         let NodeVariant::Binop { btype, l, r } = n.variant.as_ref() else { unreachable!() };
         match btype {
             TokenType::Dot => self.gen_memb_access(l, r),
+            TokenType::Equal => self.gen_assign(l, r),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
     }
@@ -66,6 +67,17 @@ impl Gen {
             &memb_dtype.variant.register("bx", &self.scope)?,
             &self.stack_repr(&memb_dtype, offset)?
         ))
+    }
+
+    pub fn gen_assign(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
+        let reg: String = l.dtype(&self.scope)?.variant.register("bx", &self.scope)?;
+        let l_repr: String = self.gen_repr(l)?;
+        let r_repr: String = self.gen_repr(r)?;
+
+        let r_to_reg: String = self.mov(&reg, &r_repr);
+        let reg_to_l: String = self.mov(&l_repr, &reg);
+
+        Ok(format!("{}{}", r_to_reg, reg_to_l))
     }
 }
 
