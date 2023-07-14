@@ -12,7 +12,10 @@ impl Gen {
         match btype {
             TokenType::Dot => self.gen_memb_access(l, r),
             TokenType::Equal => self.gen_assign(l, r),
-            TokenType::Plus => self.add(AsmArg::Node(l), AsmArg::Node(r)),
+            TokenType::Plus |
+            TokenType::Minus |
+            TokenType::Star |
+            TokenType::Div => self.add(AsmArg::Node(l), AsmArg::Node(r), *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
     }

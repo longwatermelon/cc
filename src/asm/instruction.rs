@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::asm::Gen;
 use crate::node::{Node, Dtype};
+use crate::lexer::TokenType;
 
 pub enum AsmArg<'a> {
     Node(&'a Node),
@@ -56,26 +57,27 @@ impl Gen {
     }
 
     /// Result in eax
-    pub fn add(&mut self, a: AsmArg, b: AsmArg) -> Result<String, Error> {
+    pub fn add(&mut self, a: AsmArg, b: AsmArg, op: TokenType) -> Result<String, Error> {
         let expr_a: String = a.gen_expr_if_needed(self)?;
         let expr_b: String = b.gen_expr_if_needed(self)?;
 
-        let reg_a: String = a.associated_register(self, 'b')?;
-        let reg_b: String = b.associated_register(self, 'c')?;
-
-        let result_reg: String = a.associated_register(self, 'a')?;
+        let reg_a: String = a.associated_register(self, 'a')?;
+        let reg_b: String = b.associated_register(self, 'b')?;
 
         let a_to_reg: String = self.mov(AsmArg::Register(&reg_a), a)?;
         let b_to_reg: String = self.mov(AsmArg::Register(&reg_b), b)?;
 
         Ok(format!(
-            "{}{}{}{}\n\tadd {}, {}\n\tmov {}, {}",
+            "{}{}{}{}\n\t{} {}, {}",
             expr_a,
             expr_b,
             a_to_reg,
             b_to_reg,
-            reg_a, reg_b,
-            result_reg, reg_a
+            match op {
+                TokenType::Plus => "add",
+                _ => unreachable!(),
+            },
+            reg_a, reg_b
         ))
     }
 }
