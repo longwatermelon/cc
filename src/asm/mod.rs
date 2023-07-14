@@ -74,6 +74,7 @@ impl Gen {
 
     /// Represent stack at some offset as an operand
     pub fn stack_repr(&self, dtype: &Dtype, offset: i32) -> Result<String, Error> {
+        #[cfg(target_arch = "x86_64")]
         Ok(format!(
             "{} [rbp{:+}]",
             dtype.variant.deref(&self.scope)?, offset

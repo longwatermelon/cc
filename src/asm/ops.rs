@@ -62,10 +62,9 @@ impl Gen {
 
         // mov register, member
         let offset: i32 = l_offset + rel_offset;
-        Ok(format!(
-            "\n\tmov {}, {}",
-            memb_dtype.variant.register("bx", &self.scope)?,
-            self.stack_repr(&memb_dtype, offset)?
+        Ok(self.mov(
+            &memb_dtype.variant.register("bx", &self.scope)?,
+            &self.stack_repr(&memb_dtype, offset)?
         ))
     }
 }
