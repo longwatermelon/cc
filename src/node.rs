@@ -51,6 +51,7 @@ impl DtypeVariant {
     }
 
     pub fn deref(&self, scope: &Scope) -> Result<String, Error> {
+        #[cfg(target_arch = "x86_64")]
         Ok(
             match self.num_bytes(scope)? {
                 1 => "BYTE",
@@ -66,6 +67,7 @@ impl DtypeVariant {
             match self.num_bytes(scope)? {
                 1 => "",
                 4 => "e",
+                #[cfg(target_arch = "x86_64")]
                 8 => "r",
                 _ => panic!("[DtypeVariant::register] invalid size of {}", self.num_bytes(scope)?)
             }.to_string() + suffix
