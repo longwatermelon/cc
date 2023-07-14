@@ -1,4 +1,5 @@
 use super::Gen;
+use super::instruction::MovArg;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::scope::ScopeLayer;
@@ -47,11 +48,8 @@ impl Gen {
     pub fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
         let prep: String = self.gen_expr(value)?;
-
-        let reg: String = value.dtype(&self.scope)?.variant.register("ax", &self.scope)?;
-        let repr: String = self.gen_repr(value)?;
-
-        let mov: String = self.mov(reg.as_str(), repr.as_str());
+        let reg: String = value.dtype(&self.scope)?.variant.register('a', &self.scope)?;
+        let mov: String = self.mov(MovArg::Register(reg.as_str()), MovArg::Node(value))?;
 
         Ok(format!("{}{}", prep, mov))
     }
@@ -171,22 +169,11 @@ impl Gen {
     }
 
     pub fn gen_stack_modify(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
-        let mut res: String = String::new();
-        let mut pushed_repr: String = self.gen_repr(pushed)?;
-        // Mem - mem ops not allowed in mov
-        if pushed_repr.contains('[') && pushed_repr.contains(']') {
-            // Move to register first, change pushed_repr to said register
-            let reg: String = pushed.dtype(&self.scope)?.variant.register("bx", &self.scope)?;
-            res.push_str(&self.mov(&reg, &pushed_repr));
-            pushed_repr = reg;
-        }
-
         let pushed_dtype: Dtype = pushed.dtype(&self.scope)?;
-        let stack_repr: String = self.stack_repr(&pushed_dtype, target_stack_offset)?;
-        Ok(format!("{}{}",
-           res,
-           self.mov(&stack_repr, &pushed_repr)
-        ))
+        self.mov(
+            MovArg::Stack(pushed_dtype, target_stack_offset),
+            MovArg::Node(pushed)
+        )
     }
 
     pub fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {

@@ -70,9 +70,9 @@ impl Gen {
                 )
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
-            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register("ax", &self.scope)?),
+            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register('a', &self.scope)?),
             NodeVariant::Binop { btype: TokenType::Dot, .. } =>
-                n.dtype(&self.scope)?.variant.register("bx", &self.scope),
+                n.dtype(&self.scope)?.variant.register('b', &self.scope),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant),
         }
     }

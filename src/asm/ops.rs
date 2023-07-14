@@ -1,4 +1,5 @@
 use super::Gen;
+use super::instruction::MovArg;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::lexer::TokenType;
@@ -63,21 +64,12 @@ impl Gen {
 
         // mov register, member
         let offset: i32 = l_offset + rel_offset;
-        Ok(self.mov(
-            &memb_dtype.variant.register("bx", &self.scope)?,
-            &self.stack_repr(&memb_dtype, offset)?
-        ))
+        let reg: String = memb_dtype.variant.register('b', &self.scope)?;
+        self.mov(MovArg::Register(&reg), MovArg::Stack(memb_dtype, offset))
     }
 
     pub fn gen_assign(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
-        let reg: String = l.dtype(&self.scope)?.variant.register("bx", &self.scope)?;
-        let l_repr: String = self.gen_repr(l)?;
-        let r_repr: String = self.gen_repr(r)?;
-
-        let r_to_reg: String = self.mov(&reg, &r_repr);
-        let reg_to_l: String = self.mov(&l_repr, &reg);
-
-        Ok(format!("{}{}", r_to_reg, reg_to_l))
+        self.mov(MovArg::Node(l), MovArg::Node(r))
     }
 }
 

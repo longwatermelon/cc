@@ -62,15 +62,15 @@ impl DtypeVariant {
         )
     }
 
-    pub fn register(&self, suffix: &str, scope: &Scope) -> Result<String, Error> {
+    pub fn register(&self, reg: char, scope: &Scope) -> Result<String, Error> {
         Ok(
             match self.num_bytes(scope)? {
-                1 => "",
-                4 => "e",
+                1 => format!("{}l", reg),
+                4 => format!("e{}x", reg),
                 #[cfg(target_arch = "x86_64")]
-                8 => "r",
+                8 => format!("r{}x", reg),
                 _ => panic!("[DtypeVariant::register] invalid size of {}", self.num_bytes(scope)?)
-            }.to_string() + suffix
+            }
         )
     }
 }
