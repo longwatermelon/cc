@@ -11,7 +11,6 @@ use crate::lexer::TokenType;
 pub struct Gen {
     scope: Scope,
     data: String,
-    strnum: i32,
 }
 
 impl Gen {
@@ -19,16 +18,18 @@ impl Gen {
         Self {
             scope: Scope::new(),
             data: String::new(),
-            strnum: 0,
         }
     }
 
     pub fn gen(&mut self, root: &Node) -> Result<String, Error> {
-        self.data = String::from("section .rodata\n");
-        let start: String = String::from("global _start\nsection .text\n_start:\n\tcall main\n\tmov rdi, rax\n\tmov rax, 60\n\tsyscall\n");
-        let body: String = self.gen_expr(root)?;
+        #[cfg(target_arch = "x86_64")]
+        {
+            self.data = String::from("section .rodata\n");
+            let start: String = String::from("global _start\nsection .text\n_start:\n\tcall main\n\tmov rdi, rax\n\tmov rax, 60\n\tsyscall\n");
+            let body: String = self.gen_expr(root)?;
 
-        Ok(format!("{}{}\n{}", start, body, self.data))
+            Ok(format!("{}{}\n{}", start, body, self.data))
+        }
     }
 
     /// Generate instruction(s)
@@ -45,8 +46,9 @@ impl Gen {
                 self.scope.push_struct(n)?;
                 Ok(String::new())
             },
-            NodeVariant::Str { value } => self.gen_str(value.clone()),
+            // NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Noop |
+            NodeVariant::Str {..} |
             NodeVariant::Int {..} |
             NodeVariant::Char {..} => Ok(String::new()),
             NodeVariant::Binop {..} => self.gen_binop(n),
@@ -62,7 +64,10 @@ impl Gen {
             NodeVariant::Char { value } => Ok((*value as u8).to_string()),
             NodeVariant::Var { name } => {
                 let cv: &CVardef = self.scope.find_vardef(name, n.line)?;
-                Ok(format!("{} [rbp{:+}]", cv.node.dtype(&self.scope)?.variant.deref(&self.scope)?, cv.stack_offset))
+                self.stack_repr(
+                    &cv.node.dtype(&self.scope)?,
+                    cv.stack_offset
+                )
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
             NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register("ax", &self.scope)?),

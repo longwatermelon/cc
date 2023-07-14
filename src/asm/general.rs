@@ -53,7 +53,7 @@ impl Gen {
 
         let mov: String = self.mov(reg.as_str(), repr.as_str());
 
-        Ok(prep + mov.as_str())
+        Ok(format!("{}{}", prep, mov))
     }
 
     pub fn gen_fcall(&mut self, n: &Node) -> Result<String, Error> {
@@ -101,6 +101,7 @@ impl Gen {
             self.scope.pop_vardef();
         }
 
+        // Same between x86 and x86_64
         res.push_str(&format!("\n\tcall {}", name));
         Ok(res)
     }
@@ -182,25 +183,13 @@ impl Gen {
 
         let pushed_dtype: Dtype = pushed.dtype(&self.scope)?;
         let stack_repr: String = self.stack_repr(&pushed_dtype, target_stack_offset)?;
-        Ok(res + self.mov(
-            &stack_repr,
-            &pushed_repr
-        ).as_str())
+        Ok(format!("{}{}",
+           res,
+           self.mov(&stack_repr, &pushed_repr)
+        ))
     }
 
     pub fn gen_var(&mut self, _n: &Node) -> Result<String, Error> {
-        Ok(String::new())
-    }
-
-    pub fn gen_str(&mut self, value: String) -> Result<String, Error> {
-        self.data.push_str(
-            &format!(
-                "\tstr{}: db \"{}\", 10\n\tstr{}len: equ $ - str{}\n",
-                self.strnum, value, self.strnum, self.strnum
-            )
-        );
-        self.strnum += 1;
-
         Ok(String::new())
     }
 }
