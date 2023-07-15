@@ -65,9 +65,11 @@ impl TokenType {
         )
     }
 
+    /// High weight binops will be the operands of low weight binops.
     pub fn binop_weight(&self) -> i32 {
         match self {
-            TokenType::Dot => 3,
+            TokenType::Dot |
+            TokenType::Arrow => 3,
             TokenType::Plus  |
             TokenType::Minus |
             TokenType::Star  |
@@ -77,8 +79,6 @@ impl TokenType {
             TokenType::LessEqual |
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
-            // TokenType::Dot |
-            TokenType::Arrow |
             TokenType::Equal => 1,
             TokenType::And |
             TokenType::Or => 0,

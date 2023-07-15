@@ -43,17 +43,25 @@ impl Gen {
         let dest_repr: String = dest.repr(self)?;
         let src_repr: String = src.repr(self)?;
 
+        if dest_repr == src_repr {
+            return Ok(String::new());
+        }
+
         // Avoid mem to mem by moving to a register first
         let reg: String = dest.associated_register(self, 'b')?;
 
-        let src_to_reg: String = format!("\n\tmov {}, {}", reg, src_repr);
-        let reg_to_dest: String = format!("\n\tmov {}, {}", dest_repr, reg);
+        let src_to_dest: String = if dest_repr.contains('[') && src_repr.contains('[') {
+            let src_to_reg: String = format!("\n\tmov {}, {}", reg, src_repr);
+            let reg_to_dest: String = format!("\n\tmov {}, {}", dest_repr, reg);
+            format!("{}{}", src_to_reg, reg_to_dest)
+        } else {
+            format!("\n\tmov {}, {}", dest_repr, src_repr)
+        };
 
-        Ok(format!("{}{}{}{}",
+        Ok(format!("{}{}{}",
             dest.gen_expr_if_needed(self)?,
             src.gen_expr_if_needed(self)?,
-            src_to_reg,
-            reg_to_dest
+            src_to_dest
         ))
     }
 
