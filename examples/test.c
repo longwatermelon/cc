@@ -1,7 +1,6 @@
 int main()
 {
-    int x = 1;
-    x = 2 - 1;
-    return x;
+    int a = 3 * 2 + 2 * 56;
+    return a;
 }
 

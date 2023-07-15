@@ -94,7 +94,8 @@ impl Parser {
             _ => None
         };
 
-        if self.curr.ttype.is_unop() {
+        // Part of match, but can't put if in match
+        if n.is_none() && self.curr.ttype.is_unop() {
             n = Some(self.parse_unop()?);
         }
 
