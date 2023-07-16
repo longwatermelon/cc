@@ -39,12 +39,17 @@ impl<'a> AsmArg<'a> {
 #[cfg(target_arch = "x86_64")]
 impl Gen {
     pub fn mov(&mut self, dest: AsmArg, src: AsmArg) -> Result<String, Error> {
+        let exprs: String = format!("{}{}",
+            dest.gen_expr_if_needed(self)?,
+            src.gen_expr_if_needed(self)?
+        );
+
         // Get dest and src asm reprs
         let dest_repr: String = dest.repr(self)?;
         let src_repr: String = src.repr(self)?;
 
         if dest_repr == src_repr {
-            return Ok(String::new());
+            return Ok(exprs);
         }
 
         // Avoid mem to mem by moving to a register first
@@ -58,9 +63,8 @@ impl Gen {
             format!("\n\tmov {}, {}", dest_repr, src_repr)
         };
 
-        Ok(format!("{}{}{}",
-            dest.gen_expr_if_needed(self)?,
-            src.gen_expr_if_needed(self)?,
+        Ok(format!("{}{}",
+            exprs,
             src_to_dest
         ))
     }
@@ -90,6 +94,7 @@ impl Gen {
                 TokenType::Plus => format!("add {}, {}", reg_a, reg_b),
                 TokenType::Minus => format!("sub {}, {}", reg_a, reg_b),
                 TokenType::Star => format!("mul {}", reg_b),
+                TokenType::Div => format!("div {}", reg_b),
                 _ => unreachable!(),
             }
         ))

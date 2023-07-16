@@ -1,6 +1,5 @@
 int main()
 {
-    int a = 1 + (2 * 3);
-    return a;
+    return 4 / 2;
 }
 
