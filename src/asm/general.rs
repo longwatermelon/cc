@@ -184,7 +184,7 @@ impl Gen {
         let mut res: String = self.gen_expr(value)?;
 
         self.scope.stack_offset_change_n(n, -1)?;
-        self.scope.push_vardef(n, n.line)?;
+        self.scope.push_vardef(n);
         res.push_str(&self.gen_stack_push(value)?);
 
         Ok(res)

@@ -45,16 +45,10 @@ impl Scope {
     }
 
     /// Doesn't modify stack offset, uses self.stack_offset()
-    pub fn push_vardef(&mut self, n: &Node, err_line: usize) -> Result<(), Error> {
-        if self.find_vardef(&n.vardef_name(), err_line).is_ok() {
-            return Err(Error::new(format!("redefinition of variable '{}'", n.vardef_name()), n.line));
-        }
-
+    pub fn push_vardef(&mut self, n: &Node) {
         // self.layers must have len >= 1
         let offset: i32 = self.stack_offset();
         self.layers.last_mut().unwrap().push_vardef(CVardef::new(n, offset));
-
-        Ok(())
     }
 
     pub fn pop_vardef(&mut self) -> CVardef {
@@ -138,7 +132,7 @@ impl Scope {
     }
 
     pub fn find_vardef(&self, name: &str, err_line: usize) -> Result<&CVardef, Error> {
-        for layer in &self.layers {
+        for layer in self.layers.iter().rev() {
             let result: Option<&CVardef> = layer.vardefs.iter().find(|&x|
                 x.node.vardef_name() == name
             );

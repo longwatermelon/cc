@@ -25,7 +25,7 @@ fn handle_err<T>(res: Result<T, Error>, prog: &str) -> T {
     }
 }
 
-fn main() {
+fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
         eprintln!("no input files provided.");
@@ -33,7 +33,10 @@ fn main() {
     }
 
     // Preprocessor
-    let prog: String = fs::read_to_string(&args[0]).expect("Couldn't read file examples/test.c.");
+    let prog: String = fs::read_to_string(&args[0])
+                        .map_err(|_|
+                            format!("Can't read file '{}'.", args[0])
+                        )?;
     let mut preprocessor: Preprocessor = Preprocessor::new(&prog);
     preprocessor.preprocess();
     let processed: String = preprocessor.result();
@@ -55,5 +58,7 @@ fn main() {
     if !output.status.success() {
         println!("{:#?}", output);
     }
+
+    Ok(())
 }
 
