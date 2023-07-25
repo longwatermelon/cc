@@ -1,12 +1,13 @@
 int main()
 {
-    int x = 1;
+    int x = 2;
+    int y = 2;
 
-    while (x == 2)
+    if (x == 1 && y == 2)
     {
-        x = x + 1;
+        return 192;
     }
 
-    return x;
+    return 5;
 }
 

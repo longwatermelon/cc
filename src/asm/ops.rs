@@ -17,6 +17,7 @@ impl Gen {
             TokenType::Star |
             TokenType::Div => self.arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype),
             TokenType::EqualCmp => self.gen_cmp(l, r, *btype, "je"),
+            TokenType::And |
             TokenType::Or => self.gen_andor(l, r, *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
@@ -85,7 +86,7 @@ impl Gen {
         ))
     }
 
-    fn gen_andor(&mut self, l: &Node, r: &Node, _op: TokenType) -> Result<String, Error> {
+    fn gen_andor(&mut self, l: &Node, r: &Node, op: TokenType) -> Result<String, Error> {
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
         let lcmp: String = format!("\n\t; lcmp{}{}",
             self.gen_cmp(l, &zero_node, TokenType::EqualCmp, "jne")?,
@@ -94,7 +95,13 @@ impl Gen {
 
         let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp, "jne")?;
 
-        let asmop: String = format!("\n\tor eax, ebx\n\ttest eax, eax");
+        let asmop: String = format!("\n\t{} eax, ebx\n\ttest eax, eax",
+            match op {
+                TokenType::And => "and",
+                TokenType::Or => "or",
+                _ => unreachable!(),
+            }
+        );
         let to_eax: String = self.zf_conditional("eax", "jnz");
 
         Ok(format!("{}\n\t; rcmp{}{}{}",

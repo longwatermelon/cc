@@ -83,7 +83,8 @@ impl Gen {
             NodeVariant::Binop { btype: TokenType::Div, .. } =>
                 n.dtype(&self.scope)?.variant.register('a', &self.scope),
             NodeVariant::Binop { btype: TokenType::EqualCmp, .. } |
-            NodeVariant::Binop { btype: TokenType::Or, .. } =>
+            NodeVariant::Binop { btype: TokenType::Or, .. } |
+            NodeVariant::Binop { btype: TokenType::And, .. } =>
                 n.dtype(&self.scope)?.variant.register('a', &self.scope),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant),
         }
