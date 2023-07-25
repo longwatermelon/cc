@@ -17,6 +17,7 @@ impl Gen {
             TokenType::Star |
             TokenType::Div => self.arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype),
             TokenType::EqualCmp => self.gen_cmp(l, r, *btype),
+            // TokenType::Or => self.gen_andor(l, r, *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
     }
@@ -73,46 +74,27 @@ impl Gen {
         self.mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset))
     }
 
-    /// Stores result in eax
     fn gen_cmp(&mut self, l: &Node, r: &Node, _op: TokenType) -> Result<String, Error> {
-        // Cmp l, r
-        // If equal, jump to set eax to 1
-        // If not equal, don't jump until eax is set to 0
-        // After eax is set to 0, jump across eax set to 1
-        // .Lx+1 is the end
         /*
             cmp l, r
-            je .Lx
-            mov eax, 0
-            jmp .Lx+1
-            .Lx:
-                mov eax, 1
-            .Lx+1:
+            <zf conditional>
         */
-        let cmp_je: String = format!("{}\n\tje .L{}",
+        Ok(format!("{}{}",
             self.cmp(AsmArg::Node(l), AsmArg::Node(r))?,
-            self.label
-        );
-        self.label += 1;
-
-        let reg: String = l.dtype(&self.scope)?.variant.register('a', &self.scope)?;
-        let when_false: String = format!("\n\tmov {}, 0\n\tjmp .L{}",
-            reg, self.label
-        );
-        self.label += 1;
-
-        let labels: String = format!(
-            "\n.L{}:\n\tmov {}, 1\n.L{}:",
-            self.label - 2,
-            reg,
-            self.label - 1,
-        );
-
-        Ok(format!("{}{}{}",
-            cmp_je,
-            when_false,
-            labels,
+            self.zf_conditional(l.dtype(&self.scope)?.variant.register('a', &self.scope)?.as_str())
         ))
     }
+
+    // fn gen_andor(&mut self, l: &Node, r: &Node, op: TokenType) -> Result<String, Error> {
+    //     let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
+    //     let lcmp: String = format!("{}{}",
+    //         self.gen_cmp(l, &zero_node, TokenType::EqualCmp)?,
+    //         self.mov(AsmArg::Register("ebx"), AsmArg::Register("eax"))?
+    //     );
+
+    //     let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp)?;
+
+    //     todo!()
+    // }
 }
 

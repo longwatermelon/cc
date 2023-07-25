@@ -116,5 +116,37 @@ impl Gen {
             }
         ))
     }
+
+    /// Depending on the zero flag ZF, set eax to either 1 or 0.
+    /// For example, given the operation cmp a, b
+    /// * If a == b, zf_conditional sets eax to 1
+    /// * If a != b, zf_conditional sets eax to 0
+    pub fn zf_conditional(&mut self, result_reg: &str) -> String {
+        /*
+            je .Lx
+            mov eax, 0
+            jmp .Lx+1
+            .Lx:
+                mov eax, 1
+            .Lx+1:
+        */
+
+        let je: String = format!("\n\tje .L{}", self.label);
+        self.label += 1;
+
+        let when_false: String = format!("\n\tmov {}, 0\n\tjmp .L{}",
+            result_reg, self.label
+        );
+        self.label += 1;
+
+        let labels: String = format!(
+            "\n.L{}:\n\tmov {}, 1\n.L{}:",
+            self.label - 2,
+            result_reg,
+            self.label - 1,
+        );
+
+        format!("{}{}{}", je, when_false, labels)
+    }
 }
 
