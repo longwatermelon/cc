@@ -16,8 +16,8 @@ impl Gen {
             TokenType::Minus |
             TokenType::Star |
             TokenType::Div => self.arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype),
-            TokenType::EqualCmp => self.gen_cmp(l, r, *btype),
-            // TokenType::Or => self.gen_andor(l, r, *btype),
+            TokenType::EqualCmp => self.gen_cmp(l, r, *btype, "je"),
+            TokenType::Or => self.gen_andor(l, r, *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
     }
@@ -74,27 +74,35 @@ impl Gen {
         self.mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset))
     }
 
-    fn gen_cmp(&mut self, l: &Node, r: &Node, _op: TokenType) -> Result<String, Error> {
+    fn gen_cmp(&mut self, l: &Node, r: &Node, _op: TokenType, jmp: &str) -> Result<String, Error> {
         /*
             cmp l, r
             <zf conditional>
         */
         Ok(format!("{}{}",
             self.cmp(AsmArg::Node(l), AsmArg::Node(r))?,
-            self.zf_conditional(l.dtype(&self.scope)?.variant.register('a', &self.scope)?.as_str())
+            self.zf_conditional(l.dtype(&self.scope)?.variant.register('a', &self.scope)?.as_str(), jmp)
         ))
     }
 
-    // fn gen_andor(&mut self, l: &Node, r: &Node, op: TokenType) -> Result<String, Error> {
-    //     let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
-    //     let lcmp: String = format!("{}{}",
-    //         self.gen_cmp(l, &zero_node, TokenType::EqualCmp)?,
-    //         self.mov(AsmArg::Register("ebx"), AsmArg::Register("eax"))?
-    //     );
+    fn gen_andor(&mut self, l: &Node, r: &Node, _op: TokenType) -> Result<String, Error> {
+        let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
+        let lcmp: String = format!("\n\t; lcmp{}{}",
+            self.gen_cmp(l, &zero_node, TokenType::EqualCmp, "jne")?,
+            self.mov(AsmArg::Register("ebx"), AsmArg::Register("eax"))?,
+        );
 
-    //     let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp)?;
+        let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp, "jne")?;
 
-    //     todo!()
-    // }
+        let asmop: String = format!("\n\tor eax, ebx\n\ttest eax, eax");
+        let to_eax: String = self.zf_conditional("eax", "jnz");
+
+        Ok(format!("{}\n\t; rcmp{}{}{}",
+            lcmp,
+            rcmp,
+            asmop,
+            to_eax
+        ))
+    }
 }
 

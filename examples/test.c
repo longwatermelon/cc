@@ -1,7 +1,7 @@
 int main()
 {
-    int x = 3;
-    if (x == 1)
+    int x = 10;
+    if (x == 10 || x == 10)
     {
         return 99;
     }
