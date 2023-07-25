@@ -48,7 +48,11 @@ impl Gen {
     pub fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
         let reg: String = value.dtype(&self.scope)?.variant.register('a', &self.scope)?;
-        self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value))
+        Ok(format!(
+            "{}{}",
+            self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value))?,
+            "\n\tmov rsp, rbp\n\tpop rbp\n\tret\n"
+        ))
     }
 
     pub fn gen_fcall(&mut self, n: &Node) -> Result<String, Error> {
@@ -110,6 +114,33 @@ impl Gen {
         }
 
         Ok(res)
+    }
+
+    pub fn gen_if(&mut self, n: &Node) -> Result<String, Error> {
+        let NodeVariant::If { cond, body } = n.variant.as_ref() else { unreachable!() };
+
+        // Evaluate cond
+        let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, n.line);
+        let cmp: String = self.cmp(AsmArg::Node(cond), AsmArg::Node(&zero_node))?;
+
+        //     <body>
+        // .Lx:
+        //     <rest of the program>
+        // If cmp is not equal (cond is true) then jump to .Lx
+        let label: usize = self.label;
+        let body_and_jmp: String = format!(
+            "\n\tje .L{}{}\n.L{}:",
+            label,
+            self.gen_expr(body)?,
+            label,
+        );
+        self.label += 1;
+
+        Ok(format!(
+            "{}{}",
+            cmp,
+            body_and_jmp,
+        ))
     }
 
     pub fn gen_vardef(&mut self, n: &Node) -> Result<String, Error> {

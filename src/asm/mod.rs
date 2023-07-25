@@ -11,6 +11,7 @@ use crate::lexer::TokenType;
 pub struct Gen {
     scope: Scope,
     data: String,
+    label: usize,
 }
 
 impl Gen {
@@ -18,6 +19,7 @@ impl Gen {
         Self {
             scope: Scope::new(),
             data: String::new(),
+            label: 0,
         }
     }
 
@@ -46,6 +48,7 @@ impl Gen {
                 self.scope.push_struct(n)?;
                 Ok(String::new())
             },
+            NodeVariant::If {..} => self.gen_if(n),
             // NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Noop |
             NodeVariant::Str {..} |

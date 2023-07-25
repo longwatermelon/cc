@@ -52,10 +52,10 @@ impl Gen {
             return Ok(exprs);
         }
 
-        // Avoid mem to mem by moving to a register first
-        let reg: String = dest.associated_register(self, 'b')?;
 
         let src_to_dest: String = if dest_repr.contains('[') && src_repr.contains('[') {
+            // Avoid mem to mem by moving to a register first
+            let reg: String = dest.associated_register(self, 'b')?;
             let src_to_reg: String = format!("\n\tmov {}, {}", reg, src_repr);
             let reg_to_dest: String = format!("\n\tmov {}, {}", dest_repr, reg);
             format!("{}{}", src_to_reg, reg_to_dest)
@@ -66,6 +66,22 @@ impl Gen {
         Ok(format!("{}{}",
             exprs,
             src_to_dest
+        ))
+    }
+
+    pub fn cmp(&mut self, a: AsmArg, b: AsmArg) -> Result<String, Error> {
+        let exprs: String = format!(
+            "{}{}",
+            a.gen_expr_if_needed(self)?,
+            b.gen_expr_if_needed(self)?,
+        );
+
+        let a_repr: String = a.repr(self)?;
+        let b_repr: String = b.repr(self)?;
+
+        Ok(format!("{}{}",
+            exprs,
+            format!("\n\tcmp {}, {}", a_repr, b_repr)
         ))
     }
 
