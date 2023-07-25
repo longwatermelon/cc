@@ -1,9 +1,10 @@
 int main()
 {
-    int x = 10;
-    if (x == 10 || x == 10)
+    int x = 1;
+
+    while (x == 2)
     {
-        return 99;
+        x = x + 1;
     }
 
     return x;

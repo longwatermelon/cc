@@ -3,7 +3,7 @@ C compiler
 
 # Todo
 * Address of, dereference
-* Comparison operators
+* Comparison operators (in progress)
 * while, for
 * Register allocator
 
