@@ -69,6 +69,7 @@ impl Gen {
         ))
     }
 
+    /// Result in eax
     pub fn cmp(&mut self, a: AsmArg, b: AsmArg) -> Result<String, Error> {
         let exprs: String = format!(
             "{}{}",

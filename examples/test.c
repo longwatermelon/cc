@@ -1,18 +1,11 @@
 int main()
 {
-    int x = 0;
-    if (x)
+    int x = 3;
+    if (x == 1)
     {
-        return 9;
+        return 99;
     }
 
-    int y = 39;
-
-    if (y)
-    {
-        int z = 1;
-    }
-
-    return y;
+    return x;
 }
 

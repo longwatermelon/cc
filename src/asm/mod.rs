@@ -49,6 +49,7 @@ impl Gen {
                 Ok(String::new())
             },
             NodeVariant::If {..} => self.gen_if(n),
+            NodeVariant::While {..} => self.gen_while(n),
             // NodeVariant::Str { value } => self.gen_str(value.clone()),
             NodeVariant::Noop |
             NodeVariant::Str {..} |
@@ -80,6 +81,8 @@ impl Gen {
             NodeVariant::Binop { btype: TokenType::Minus, .. } |
             NodeVariant::Binop { btype: TokenType::Star, .. } |
             NodeVariant::Binop { btype: TokenType::Div, .. } =>
+                n.dtype(&self.scope)?.variant.register('a', &self.scope),
+            NodeVariant::Binop { btype: TokenType::EqualCmp, .. } =>
                 n.dtype(&self.scope)?.variant.register('a', &self.scope),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant),
         }

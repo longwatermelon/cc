@@ -4,6 +4,6 @@ C compiler
 # Todo
 * Address of, dereference
 * Comparison operators
-* Control flow - if, while, for
+* while, for
 * Register allocator
 
