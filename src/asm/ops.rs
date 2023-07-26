@@ -1,5 +1,6 @@
 use super::Gen;
 use super::instruction::AsmArg;
+use super::util;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::lexer::TokenType;
@@ -87,24 +88,29 @@ impl Gen {
     }
 
     fn gen_andor(&mut self, l: &Node, r: &Node, op: TokenType) -> Result<String, Error> {
+        let ar: String = util::register('a', l, self)?;
+        let br: String = util::register('b', l, self)?;
+
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
-        let lcmp: String = format!("\n\t; lcmp{}{}",
+        let lcmp: String = format!("{}{}",
             self.gen_cmp(l, &zero_node, TokenType::EqualCmp, "jne")?,
-            self.mov(AsmArg::Register("ebx"), AsmArg::Register("eax"))?,
+            self.mov(AsmArg::Register(br.as_str()), AsmArg::Register(ar.as_str()))?,
         );
 
         let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp, "jne")?;
 
-        let asmop: String = format!("\n\t{} eax, ebx\n\ttest eax, eax",
+        let asmop: String = format!("\n\t{} {}, {}\n\ttest {}, {}",
             match op {
                 TokenType::And => "and",
                 TokenType::Or => "or",
                 _ => unreachable!(),
-            }
+            },
+            ar, br,
+            ar, ar
         );
-        let to_eax: String = self.zf_conditional("eax", "jnz");
+        let to_eax: String = self.zf_conditional(ar.as_str(), "jnz");
 
-        Ok(format!("{}\n\t; rcmp{}{}{}",
+        Ok(format!("{}{}{}{}",
             lcmp,
             rcmp,
             asmop,

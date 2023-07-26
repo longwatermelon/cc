@@ -52,7 +52,6 @@ impl Gen {
             return Ok(exprs);
         }
 
-
         let src_to_dest: String = if dest_repr.contains('[') && src_repr.contains('[') {
             // Avoid mem to mem by moving to a register first
             let reg: String = dest.associated_register(self, 'b')?;
