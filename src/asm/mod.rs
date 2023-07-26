@@ -75,18 +75,19 @@ impl Gen {
                 )
             },
             NodeVariant::Vardef { value, .. } => self.gen_repr(value),
-            NodeVariant::Fcall { name, .. } => Ok(self.scope.find_fdef(name, n.line)?.node.dtype(&self.scope)?.variant.register('a', &self.scope)?),
+            NodeVariant::Fcall { name, .. } =>
+                util::register('a', &self.scope.find_fdef(name, n.line)?.node, self),
             NodeVariant::Binop { btype: TokenType::Dot, .. } =>
-                n.dtype(&self.scope)?.variant.register('b', &self.scope),
+                util::register('b', n, self),
             NodeVariant::Binop { btype: TokenType::Plus, .. } |
             NodeVariant::Binop { btype: TokenType::Minus, .. } |
             NodeVariant::Binop { btype: TokenType::Star, .. } |
             NodeVariant::Binop { btype: TokenType::Div, .. } =>
-                n.dtype(&self.scope)?.variant.register('a', &self.scope),
+                util::register('a', n, self),
             NodeVariant::Binop { btype: TokenType::EqualCmp, .. } |
             NodeVariant::Binop { btype: TokenType::Or, .. } |
             NodeVariant::Binop { btype: TokenType::And, .. } =>
-                n.dtype(&self.scope)?.variant.register('a', &self.scope),
+                util::register('a', n, self),
             _ => panic!("{:?} not implemented yet [REPR]", n.variant),
         }
     }
