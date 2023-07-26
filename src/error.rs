@@ -1,15 +1,92 @@
+use crate::lexer::TokenType;
+use crate::node::{Node, Dtype};
 use colored::Colorize;
+
+#[derive(Debug)]
+pub enum ErrorType<'a> {
+    /// Token
+    UnrecognizedToken(char),
+    /// Received, expected
+    UnexpectedToken(TokenType, TokenType),
+    /// Vardef name
+    VardefNoExpression(&'a str),
+    /// Struct name, member
+    NonexistentStructMember(&'a str, &'a str),
+    /// To be used for str -> dtype.
+    /// Dtype name
+    InvalidDtypeFromStr(&'a str),
+    /// Function name, arg count, param count
+    FunctionArgParamMismatch(&'a str, usize, usize),
+    /// Dest, src
+    AssignTypeMismatch(Dtype, Dtype),
+    /// Struct member variable must be an identifier.
+    /// Received
+    StructMemberVarNonId(&'a Node),
+    /// Non-struct types don't have member variables
+    /// Member access parent type
+    PrimitiveMemberAccess(Dtype),
+    /// Function name
+    FunctionDeclDefMismatch(&'a str),
+    /// Function name
+    DuplicateFdef(&'a str),
+    /// Struct name
+    DuplicateSdef(&'a str),
+    /// Function name
+    NonexistentFunction(&'a str),
+    /// Struct name
+    NonexistentStruct(&'a str),
+    /// Variable name
+    NonexistentVariable(&'a str),
+}
+
+impl<'a> ErrorType<'a> {
+    pub fn message(&self) -> String {
+        match self {
+            ErrorType::UnrecognizedToken(tok) =>
+                format!("Unrecognized token '{}'.", tok),
+            ErrorType::UnexpectedToken(recv, expect) =>
+                format!("Expected {:?}, received {:?}.", expect, recv),
+            ErrorType::VardefNoExpression(name) =>
+                format!("Definition of variable '{}' has no expression.", name),
+            ErrorType::NonexistentStructMember(sname, member) =>
+                format!("Struct '{}' has no member '{}'.", sname, member),
+            ErrorType::InvalidDtypeFromStr(dtype) =>
+                format!("'{}' is not a valid data type.", dtype),
+            ErrorType::FunctionArgParamMismatch(name, nargs, nparams) =>
+                format!("Function '{}' takes in {} parameters but was passed {} arguments.", name, nparams, nargs),
+            ErrorType::AssignTypeMismatch(dest, src) =>
+                format!("Attempting to assign type '{}' to type '{}'.", src, dest),
+            ErrorType::StructMemberVarNonId(node) =>
+                format!("Struct member access must be an identifier; received '{:?}'.", node),
+            ErrorType::PrimitiveMemberAccess(stype) =>
+                format!("Attempting to access member variable of non-struct type '{}'.", stype),
+            ErrorType::FunctionDeclDefMismatch(name) =>
+                format!("Function declaration and definition of '{}' do not align.", name),
+            ErrorType::DuplicateFdef(name) =>
+                format!("Duplicate definition of function '{}'.", name),
+            ErrorType::DuplicateSdef(name) =>
+                format!("Duplicate definition of struct '{}'.", name),
+            ErrorType::NonexistentFunction(name) =>
+                format!("Function '{}' does not exist.", name),
+            ErrorType::NonexistentStruct(name) =>
+                format!("Struct '{}' does not exist.", name),
+            ErrorType::NonexistentVariable(name) =>
+                format!("Variable '{}' does not exist.", name),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Error {
     message: String,
-    line: usize
+    line: usize,
 }
 
 impl Error {
-    pub fn new(message: String, line: usize) -> Self {
+    pub fn new(etype: ErrorType, line: usize) -> Self {
         Self {
-            message, line
+            message: etype.message(),
+            line
         }
     }
 

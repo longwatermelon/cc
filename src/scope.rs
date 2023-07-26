@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Error, ErrorType};
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::cdefs::{CFdef, CVardef, CStruct};
 
@@ -69,7 +69,10 @@ impl Scope {
             // If declaration, replace. Otherwise it's a redef error
             if matches!(body.variant.as_ref(), NodeVariant::Noop) {
                 if params.len() != orig_params.len() || rtype.variant != orig_rtype.variant {
-                    return Err(Error::new(format!("definition of '{}' does not align with its declaration.", fname), n.line));
+                    return Err(Error::new(
+                        ErrorType::FunctionDeclDefMismatch(fname.as_str()),
+                        n.line
+                    ));
                 }
 
                 // Keep all fdefs with name != fname
@@ -78,7 +81,10 @@ impl Scope {
                     name != fname
                 });
             } else {
-                return Err(Error::new(format!("redefinition of function '{}'.", fname), n.line));
+                return Err(Error::new(
+                    ErrorType::DuplicateFdef(fname.as_str()),
+                    n.line
+                ));
             }
         }
 
@@ -101,7 +107,10 @@ impl Scope {
                     sname != name
                 });
             } else {
-                return Err(Error::new(format!("redefinition of struct '{}'.", orig_name), n.line));
+                return Err(Error::new(
+                    ErrorType::DuplicateSdef(orig_name.as_str()),
+                    n.line
+                ));
             }
         }
 
@@ -113,14 +122,20 @@ impl Scope {
         self.fdefs.iter().find(|&x| {
             let NodeVariant::Fdef { name: fname, .. } = x.node.variant.as_ref() else { unreachable!() };
             fname == name
-        }).ok_or(Error::new(format!("function '{}' does not exist.", name), err_line))
+        }).ok_or(Error::new(
+            ErrorType::NonexistentFunction(name),
+            err_line
+        ))
     }
 
     pub fn find_struct(&self, name: &str, err_line: usize) -> Result<&CStruct, Error> {
         self.structs.iter().find(|&x| {
             let NodeVariant::Struct { name: orig_name, .. } = x.node.variant.as_ref() else { unreachable!() };
             name == orig_name
-        }).ok_or(Error::new(format!("struct '{}' does not exist.", name), err_line))
+        }).ok_or(Error::new(
+            ErrorType::NonexistentStruct(name),
+            err_line
+        ))
     }
 
     pub fn find_struct_dtype(&self, dtype: Dtype, err_line: usize) -> Result<&CStruct, Error> {
@@ -142,7 +157,10 @@ impl Scope {
             }
         }
 
-        Err(Error::new(format!("variable '{}' does not exist.", name), err_line))
+        Err(Error::new(
+            ErrorType::NonexistentVariable(name),
+            err_line
+        ))
     }
 
     pub fn stack_offset(&self) -> i32 {

@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Error, ErrorType};
 use crate::lexer::TokenType;
 use crate::scope::Scope;
 use crate::cdefs::CStruct;
@@ -12,12 +12,6 @@ pub enum DtypeVariant {
     Struct { name: String }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Dtype {
-    pub variant: DtypeVariant,
-    pub memops: Vec<char>
-}
-
 impl DtypeVariant {
     /// Does not fill out enum variant fields, only determines the enum variant type
     pub fn new(dtype: &str) -> Result<Self, Error> {
@@ -26,7 +20,11 @@ impl DtypeVariant {
             "char" => Ok(DtypeVariant::Char),
             "void" => Ok(DtypeVariant::Void),
             "struct" => Ok(DtypeVariant::Struct { name: String::new() }),
-            _ => Err(Error::new(format!("{} is not a valid data type.", dtype), 0))
+            _ => Err(Error::new(
+                ErrorType::InvalidDtypeFromStr(dtype),
+                // TODO err line
+                0
+            ))
         }
     }
 
@@ -83,6 +81,21 @@ impl fmt::Display for DtypeVariant {
             DtypeVariant::Void => "void".to_string(),
             DtypeVariant::Struct { name } => format!("struct {}", name)
         })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Dtype {
+    pub variant: DtypeVariant,
+    pub memops: Vec<char>
+}
+
+impl fmt::Display for Dtype {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}",
+            self.variant,
+            self.memops.iter().collect::<String>(),
+        )
     }
 }
 
@@ -205,7 +218,10 @@ impl Node {
 
                         fields.iter().find(|&x|
                             field_name == x.vardef_name().as_str()
-                        ).ok_or(Error::new(format!("No member variable '{}' in struct '{}'.", field_name, struct_name), field.line))
+                        ).ok_or(Error::new(
+                            ErrorType::NonexistentStructMember(struct_name.as_str(), field_name.as_str()),
+                            field.line
+                        ))
                     }
 
                     fn associated_sdef<'a>(n: &'a Node, scope: &'a Scope) -> Result<&'a CStruct, Error> {

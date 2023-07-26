@@ -28,15 +28,19 @@ fn handle_err<T>(res: Result<T, Error>, prog: &str) -> T {
 fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
-        eprintln!("no input files provided.");
+        eprintln!("No input files provided.");
         std::process::exit(1);
     }
 
     // Preprocessor
-    let prog: String = fs::read_to_string(&args[0])
-                        .map_err(|_|
-                            format!("Can't read file '{}'.", args[0])
-                        )?;
+    let prog: String = match fs::read_to_string(&args[0]) {
+        Ok(x) => x,
+        Err(_) => {
+            eprintln!("Can't read file '{}'.", args[0]);
+            std::process::exit(1);
+        }
+    };
+
     let mut preprocessor: Preprocessor = Preprocessor::new(&prog);
     preprocessor.preprocess();
     let processed: String = preprocessor.result();

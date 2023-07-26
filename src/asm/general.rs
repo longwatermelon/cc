@@ -1,7 +1,7 @@
 use super::Gen;
 use super::instruction::AsmArg;
 use super::util;
-use crate::error::Error;
+use crate::error::{Error, ErrorType};
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::scope::ScopeLayer;
 use crate::cdefs::{CFdef, CVardef};
@@ -71,12 +71,8 @@ impl Gen {
         if args.len() != params.len() {
             return Err(
                 Error::new(
-                    format!(
-                        "function {} takes in {} argument{} but received {}.",
-                        name, params.len(),
-                        if params.len() == 1 { "" } else { "s" },
-                        args.len()
-                    ), n.line
+                    ErrorType::FunctionArgParamMismatch(name.as_str(), args.len(), params.len()),
+                    n.line
                 )
             );
         }
@@ -175,10 +171,8 @@ impl Gen {
         if value_dtype != n_dtype {
             return Err(
                 Error::new(
-                    format!(
-                        "attempting to assign value of type '{}' to variable of type '{}'.",
-                        value_dtype.variant, n_dtype.variant
-                    ), n.line
+                    ErrorType::AssignTypeMismatch(n_dtype, value_dtype),
+                    n.line
                 )
             );
         }

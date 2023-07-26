@@ -1,7 +1,7 @@
 use super::Gen;
 use super::instruction::AsmArg;
 use super::util;
-use crate::error::Error;
+use crate::error::{Error, ErrorType};
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::lexer::TokenType;
 use crate::cdefs::CStruct;
@@ -27,13 +27,19 @@ impl Gen {
     pub fn gen_memb_access(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
         // Member access must be an identifier
         if !matches!(r.variant.as_ref(), NodeVariant::Var {..}) {
-            return Err(Error::new(format!("Member variable must be an identifier. Received: '{:?}'", r), r.line));
+            return Err(Error::new(
+                ErrorType::StructMemberVarNonId(r),
+                r.line
+            ));
         }
 
         // Only structs have member variables
         let dtype: Dtype = l.dtype(&self.scope)?;
         if !matches!(dtype.variant, DtypeVariant::Struct {..}) {
-            return Err(Error::new(format!("Dtype {:?} does not have member variables.", dtype.variant), l.line));
+            return Err(Error::new(
+                ErrorType::PrimitiveMemberAccess(dtype),
+                l.line
+            ));
         }
 
         // Get offset of member specified by r
@@ -60,10 +66,8 @@ impl Gen {
                             .position(|x| x.vardef_name() == memb_name)
                             .ok_or(
                                 Error::new(
-                                    format!(
-                                        "Struct '{}' has no member '{}'.",
-                                        sdef_name, memb_name
-                                    ), l.line
+                                    ErrorType::NonexistentStructMember(sdef_name.as_str(), memb_name.as_str()),
+                                    l.line
                                 )
                             )?;
 

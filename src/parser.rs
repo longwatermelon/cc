@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Error, ErrorType};
 use crate::lexer::*;
 use crate::node::*;
 
@@ -52,10 +52,10 @@ impl Parser {
             self.curr = self.lexer.next()?;
             Ok(())
         } else {
-            Err(Error::new(format!(
-                "expected token type {:?}, got {:?}.",
-                ttype, self.curr.ttype
-            ), self.curr.line))
+            Err(Error::new(
+                ErrorType::UnexpectedToken(self.curr.ttype, ttype),
+                self.curr.line
+            ))
         }
     }
 
@@ -111,10 +111,8 @@ impl Parser {
     }
 
     fn parse_int(&mut self) -> Result<Node, Error> {
-        let int_value: i32 = match self.curr.value.parse::<i32>() {
-            Ok(x) => x,
-            Err(e) => return Err(Error::new(e.to_string(), self.curr.line))
-        };
+        // Lexer guarantees this is a valid integer, it wouldn't be accepted otherwise
+        let int_value: i32 = self.curr.value.parse::<i32>().unwrap();
         self.expect(TokenType::Int)?;
         Ok(Node::new(NodeVariant::Int { value: int_value }, self.curr.line))
     }
@@ -253,7 +251,10 @@ impl Parser {
                         value:
                             match self.parse_expr(false)? {
                                 Some(x) => x,
-                                None => return Err(Error::new(format!("no expression in definition of '{}'.", var.var_name()), line))
+                                None => return Err(Error::new(
+                                    ErrorType::VardefNoExpression(var.var_name().as_str()),
+                                    line
+                                ))
                             },
                         dtype
                         }, line

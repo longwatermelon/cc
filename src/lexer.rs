@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Error, ErrorType};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TokenType {
@@ -167,7 +167,10 @@ impl Lexer {
                     if self.ch == '|' {
                         return Ok(self.advance_with_tok(TokenType::Or))
                     } else {
-                        return Err(Error::new(format!("unrecognized token '{}'.", self.ch), self.line))
+                        return Err(Error::new(
+                            ErrorType::UnrecognizedToken(self.ch),
+                            self.line
+                        ))
                     }
                 },
                 '+' => return Ok(self.advance_with_tok(TokenType::Plus)),
@@ -201,7 +204,10 @@ impl Lexer {
                     self.line += 1;
                     self.advance()
                 },
-                _ => return Err(Error::new(format!("unrecognized token '{}'.", self.ch), self.line))
+                _ => return Err(Error::new(
+                        ErrorType::UnrecognizedToken(self.ch),
+                        self.line
+                    ))
             }
         }
 

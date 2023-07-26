@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Error, ErrorType};
 use crate::node::{Node, NodeVariant};
 use crate::scope::Scope;
 
@@ -62,7 +62,10 @@ impl CStruct {
         let NodeVariant::Struct { name, fields } = self.node.variant.as_ref() else { unreachable!() };
         let index: usize = fields.iter().position(|x|
             x.vardef_name() == field_name
-        ).ok_or(Error::new(format!("Struct '{}' has no member '{}'.", name, field_name), err_line))?;
+        ).ok_or(Error::new(
+            ErrorType::NonexistentStructMember(name.as_str(), field_name),
+            err_line
+        ))?;
 
         Ok(self.memb_stack_offsets[index])
     }
