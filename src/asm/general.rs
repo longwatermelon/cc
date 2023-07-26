@@ -1,5 +1,6 @@
 use super::Gen;
 use super::instruction::AsmArg;
+use super::util;
 use crate::error::Error;
 use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
 use crate::scope::ScopeLayer;
@@ -47,7 +48,7 @@ impl Gen {
 
     pub fn gen_return(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
-        let reg: String = value.dtype(&self.scope)?.variant.register('a', &self.scope)?;
+        let reg: String = util::register('a', value, self)?;
         Ok(format!(
             "{}{}",
             self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value))?,
