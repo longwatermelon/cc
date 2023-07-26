@@ -83,7 +83,7 @@ impl Gen {
         */
         Ok(format!("{}{}",
             self.cmp(AsmArg::Node(l), AsmArg::Node(r))?,
-            self.zf_conditional(l.dtype(&self.scope)?.variant.register('a', &self.scope)?.as_str(), jmp)
+            self.zf_conditional(util::register('a', l, self)?.as_str(), jmp)
         ))
     }
 
