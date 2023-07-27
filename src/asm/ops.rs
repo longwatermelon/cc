@@ -133,7 +133,7 @@ impl Gen {
 
     fn gen_not(&mut self, n: &Node) -> Result<String, Error> {
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, n.line);
-        self.gen_cmp(n, &zero_node, "je")
+        Ok(format!("\n\t; [not]{}", self.gen_cmp(n, &zero_node, "je")?))
     }
 }
 
