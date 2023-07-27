@@ -57,7 +57,8 @@ impl Gen {
             NodeVariant::Int {..} |
             NodeVariant::Char {..} => Ok(String::new()),
             NodeVariant::Binop {..} => self.gen_binop(n),
-            _ => panic!("{:?} not implemented yet [EXPR]", n.variant),
+            NodeVariant::Unop {..} => self.gen_unop(n),
+            _ => panic!("[Gen::gen_expr] {:?} not implemented yet", n.variant),
         }
     }
 
@@ -82,14 +83,15 @@ impl Gen {
             NodeVariant::Binop { btype: TokenType::Plus, .. } |
             NodeVariant::Binop { btype: TokenType::Minus, .. } |
             NodeVariant::Binop { btype: TokenType::Star, .. } |
-            NodeVariant::Binop { btype: TokenType::Div, .. } =>
-                util::register('a', n, self),
+            NodeVariant::Binop { btype: TokenType::Div, .. } |
             NodeVariant::Binop { btype: TokenType::EqualCmp, .. } |
             NodeVariant::Binop { btype: TokenType::NotEqual, .. } |
             NodeVariant::Binop { btype: TokenType::Or, .. } |
             NodeVariant::Binop { btype: TokenType::And, .. } =>
                 util::register('a', n, self),
-            _ => panic!("{:?} not implemented yet [REPR]", n.variant),
+            NodeVariant::Unop { utype: TokenType::Not, .. } =>
+                util::register('a', n, self),
+            _ => panic!("[Gen::gen_repr] {:?} not implemented yet", n.variant),
         }
     }
 

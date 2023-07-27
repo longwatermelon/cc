@@ -147,6 +147,7 @@ impl Gen {
     pub fn gen_while(&mut self, n: &Node) -> Result<String, Error> {
         let NodeVariant::While { cond, body } = n.variant.as_ref() else { unreachable!() };
 
+        // TODO Currently this behaves like a do-while loop
         /*
            .Lx:
                 <while body>

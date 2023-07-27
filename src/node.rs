@@ -245,6 +245,7 @@ impl Node {
                     field.dtype(scope)?
                 },
                 NodeVariant::Binop { l, .. } => l.dtype(scope)?,
+                NodeVariant::Unop { r, .. } => r.dtype(scope)?,
                 _ => panic!("{:?} doesn't have a dtype.", self.variant)
             }
         )

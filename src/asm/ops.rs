@@ -25,7 +25,15 @@ impl Gen {
         }
     }
 
-    pub fn gen_memb_access(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
+    pub fn gen_unop(&mut self, n: &Node) -> Result<String, Error> {
+        let NodeVariant::Unop { utype, r } = n.variant.as_ref() else { unreachable!() };
+        match utype {
+            TokenType::Not => self.gen_not(r),
+            _ => panic!("[Gen::gen_unop] Unop {:?} not supported.", utype),
+        }
+    }
+
+    fn gen_memb_access(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
         // Member access must be an identifier
         if !matches!(r.variant.as_ref(), NodeVariant::Var {..}) {
             return Err(Error::new(
@@ -121,6 +129,11 @@ impl Gen {
             asmop,
             to_eax
         ))
+    }
+
+    fn gen_not(&mut self, n: &Node) -> Result<String, Error> {
+        let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, n.line);
+        self.gen_cmp(n, &zero_node, "je")
     }
 }
 
