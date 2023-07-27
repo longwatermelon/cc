@@ -69,7 +69,7 @@ impl Gen {
             NodeVariant::Char { value } => Ok((*value as u8).to_string()),
             NodeVariant::Var { name } => {
                 let cv: &CVardef = self.scope.find_vardef(name, n.line)?;
-                self.stack_repr(
+                self.gen_stack_repr(
                     &cv.node.dtype(&self.scope)?,
                     cv.stack_offset
                 )
@@ -93,7 +93,7 @@ impl Gen {
     }
 
     /// Represent stack at some offset as an operand
-    pub fn stack_repr(&self, dtype: &Dtype, offset: i32) -> Result<String, Error> {
+    pub fn gen_stack_repr(&self, dtype: &Dtype, offset: i32) -> Result<String, Error> {
         #[cfg(target_arch = "x86_64")]
         Ok(format!(
             "{} [rbp{:+}]",

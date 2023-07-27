@@ -15,7 +15,7 @@ impl<'a> AsmArg<'a> {
         match self {
             AsmArg::Node(n) => gen.gen_repr(n),
             AsmArg::Register(reg) => Ok(reg.to_string()),
-            AsmArg::Stack(dtype, offset) => gen.stack_repr(&dtype, *offset),
+            AsmArg::Stack(dtype, offset) => gen.gen_stack_repr(&dtype, *offset),
         }
     }
 
@@ -38,7 +38,7 @@ impl<'a> AsmArg<'a> {
 
 #[cfg(target_arch = "x86_64")]
 impl Gen {
-    pub fn mov(&mut self, dest: AsmArg, src: AsmArg, gen_exprs: bool) -> Result<String, Error> {
+    pub fn asm_mov(&mut self, dest: AsmArg, src: AsmArg, gen_exprs: bool) -> Result<String, Error> {
         let exprs: String = if gen_exprs {
             format!("{}{}",
                 dest.gen_expr_if_needed(self)?,
@@ -71,7 +71,7 @@ impl Gen {
     }
 
     /// Result in eax
-    pub fn cmp(&mut self, a: AsmArg, b: AsmArg) -> Result<String, Error> {
+    pub fn asm_cmp(&mut self, a: AsmArg, b: AsmArg) -> Result<String, Error> {
         let exprs: String = format!(
             "{}{}",
             a.gen_expr_if_needed(self)?,
@@ -87,12 +87,12 @@ impl Gen {
         ))
     }
 
-    pub fn extend_stack(&self, nbytes: i32) -> String {
+    pub fn asm_extend_stack(&self, nbytes: i32) -> String {
         format!("\n\tsub rsp, {}", nbytes)
     }
 
     /// a and b should be Nodes
-    pub fn arithmetic(&mut self, a: AsmArg, b: AsmArg, op: TokenType) -> Result<String, Error> {
+    pub fn asm_arithmetic(&mut self, a: AsmArg, b: AsmArg, op: TokenType) -> Result<String, Error> {
         // let expr_a: String = a.gen_expr_if_needed(self)?;
         // let expr_b: String = b.gen_expr_if_needed(self)?;
 
@@ -111,12 +111,12 @@ impl Gen {
         let boffset: i32 = self.scope.stack_offset();
         let b_to_stack: String = self.gen_stack_push(nb)?;
 
-        let astack_to_reg: String = self.mov(
+        let astack_to_reg: String = self.asm_mov(
             AsmArg::Register(reg_a.as_str()),
             AsmArg::Stack(&na.dtype(&self.scope)?, aoffset),
             false
         )?;
-        let bstack_to_reg: String = self.mov(
+        let bstack_to_reg: String = self.asm_mov(
             AsmArg::Register(reg_b.as_str()),
             AsmArg::Stack(&nb.dtype(&self.scope)?, boffset),
             false
@@ -148,7 +148,7 @@ impl Gen {
     /// * If a != b, zf_conditional sets eax to 0
     /// jmp = je, jne, etc.
     /// If you are comparing with a zero node, you most likely want jmp = jne.
-    pub fn zf_conditional(&mut self, result_reg: &str, jmp: &str) -> String {
+    pub fn asm_zf_conditional(&mut self, result_reg: &str, jmp: &str) -> String {
         /*
             je .Lx
             mov eax, 0

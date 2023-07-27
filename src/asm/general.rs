@@ -51,7 +51,7 @@ impl Gen {
         let reg: String = util::register('a', value, self)?;
         Ok(format!(
             "\n\t; [return] {}{}",
-            self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value), true)?,
+            self.asm_mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value), true)?,
             "\n\tmov rsp, rbp\n\tpop rbp\n\tret\n"
         ))
     }
@@ -122,7 +122,7 @@ impl Gen {
 
         // Evaluate cond
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, n.line);
-        let cmp: String = self.cmp(AsmArg::Node(cond), AsmArg::Node(&zero_node))?;
+        let cmp: String = self.asm_cmp(AsmArg::Node(cond), AsmArg::Node(&zero_node))?;
 
         //     <body>
         // .Lx:
@@ -161,7 +161,7 @@ impl Gen {
             "\n\t; [while]\n.L{}:{}\n\t{}\n\tjne .L{}\n\t; [end while]",
             label,
             self.gen_expr(body)?,
-            self.cmp(AsmArg::Node(cond), AsmArg::Node(&zero_node))?,
+            self.asm_cmp(AsmArg::Node(cond), AsmArg::Node(&zero_node))?,
             label,
         ))
     }
@@ -210,7 +210,7 @@ impl Gen {
                                             .num_bytes(&self.scope)?;
 
                     format!("{}{}",
-                        self.extend_stack(nbytes),
+                        self.asm_extend_stack(nbytes),
                         self.gen_stack_modify(pushed, self.scope.stack_offset())?
                     )
                 },
@@ -220,7 +220,7 @@ impl Gen {
 
     pub fn gen_stack_modify(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
         let pushed_dtype: Dtype = pushed.dtype(&self.scope)?;
-        self.mov(
+        self.asm_mov(
             AsmArg::Stack(&pushed_dtype, target_stack_offset),
             AsmArg::Node(pushed),
             false,
