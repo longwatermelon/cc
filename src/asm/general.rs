@@ -51,7 +51,7 @@ impl Gen {
         let reg: String = util::register('a', value, self)?;
         Ok(format!(
             "{}{}",
-            self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value))?,
+            self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value), true)?,
             "\n\tmov rsp, rbp\n\tpop rbp\n\tret\n"
         ))
     }
@@ -86,6 +86,9 @@ impl Gen {
         }
 
         // Push in reverse order
+        // TODO args can potentially modify the stack, which will mess up
+        // parameter access inside the function, since the passed args will
+        // be separated by the preparation process.
         for arg in passed_args.iter().rev() {
             res.push_str(&self.gen_vardef(arg)?);
         }
@@ -178,6 +181,7 @@ impl Gen {
         }
         let mut res: String = self.gen_expr(value)?;
 
+        res.push_str("\n\t; [gen_vardef] stack offset change");
         self.scope.stack_offset_change_n(n, -1)?;
         self.scope.push_vardef(n);
         res.push_str(&self.gen_stack_push(value)?);
@@ -217,7 +221,8 @@ impl Gen {
         let pushed_dtype: Dtype = pushed.dtype(&self.scope)?;
         self.mov(
             AsmArg::Stack(&pushed_dtype, target_stack_offset),
-            AsmArg::Node(pushed)
+            AsmArg::Node(pushed),
+            false,
         )
     }
 

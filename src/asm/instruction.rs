@@ -38,11 +38,13 @@ impl<'a> AsmArg<'a> {
 
 #[cfg(target_arch = "x86_64")]
 impl Gen {
-    pub fn mov(&mut self, dest: AsmArg, src: AsmArg) -> Result<String, Error> {
-        let exprs: String = format!("{}{}",
-            dest.gen_expr_if_needed(self)?,
-            src.gen_expr_if_needed(self)?
-        );
+    pub fn mov(&mut self, dest: AsmArg, src: AsmArg, gen_exprs: bool) -> Result<String, Error> {
+        let exprs: String = if gen_exprs {
+            format!("{}{}",
+                dest.gen_expr_if_needed(self)?,
+                src.gen_expr_if_needed(self)?
+            )
+        } else { String::new() };
 
         // Get dest and src asm reprs
         let dest_repr: String = dest.repr(self)?;
@@ -89,30 +91,54 @@ impl Gen {
         format!("\n\tsub rsp, {}", nbytes)
     }
 
-    /// Result in eax
+    /// a and b should be Nodes
     pub fn arithmetic(&mut self, a: AsmArg, b: AsmArg, op: TokenType) -> Result<String, Error> {
-        let expr_a: String = a.gen_expr_if_needed(self)?;
-        let expr_b: String = b.gen_expr_if_needed(self)?;
+        // let expr_a: String = a.gen_expr_if_needed(self)?;
+        // let expr_b: String = b.gen_expr_if_needed(self)?;
 
         let reg_a: String = a.associated_register(self, 'a')?;
         let reg_b: String = b.associated_register(self, 'b')?;
 
-        let a_to_reg: String = self.mov(AsmArg::Register(&reg_a), a)?;
-        let b_to_reg: String = self.mov(AsmArg::Register(&reg_b), b)?;
+        let AsmArg::Node(na) = a else { unreachable!() };
+        let AsmArg::Node(nb) = b else { unreachable!() };
+        let a_expr: String = a.gen_expr_if_needed(self)?;
+        self.scope.stack_offset_change_n(na, -1)?;
+        let aoffset: i32 = self.scope.stack_offset();
+        let a_to_stack: String = self.gen_stack_push(na)?;
+
+        let b_expr: String = b.gen_expr_if_needed(self)?;
+        self.scope.stack_offset_change_n(nb, -1)?;
+        let boffset: i32 = self.scope.stack_offset();
+        let b_to_stack: String = self.gen_stack_push(nb)?;
+
+        let astack_to_reg: String = self.mov(
+            AsmArg::Register(reg_a.as_str()),
+            AsmArg::Stack(&na.dtype(&self.scope)?, aoffset),
+            false
+        )?;
+        let bstack_to_reg: String = self.mov(
+            AsmArg::Register(reg_b.as_str()),
+            AsmArg::Stack(&nb.dtype(&self.scope)?, boffset),
+            false
+        )?;
 
         Ok(format!(
-            "{}{}{}{}\n\t{}",
-            expr_a,
-            expr_b,
-            a_to_reg,
-            b_to_reg,
+            "\n\t; [arithmetic] a expr{}\n\t; [arithmetic] a to stack{}\n\t; [arithmetic] b expr{}
+             \n\t; [arithmetic] b to stack{}\n\t; [arithmetic] astack to reg{}\n\t; [arithmetic] bstack to reg{}
+             \n\t{}\n\t; [arithmetic] end",
+            a_expr,
+            a_to_stack,
+            b_expr,
+            b_to_stack,
+            astack_to_reg,
+            bstack_to_reg,
             match op {
                 TokenType::Plus => format!("add {}, {}", reg_a, reg_b),
                 TokenType::Minus => format!("sub {}, {}", reg_a, reg_b),
                 TokenType::Star => format!("mul {}", reg_b),
                 TokenType::Div => format!("div {}", reg_b),
                 _ => unreachable!(),
-            }
+            },
         ))
     }
 

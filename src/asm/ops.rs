@@ -12,7 +12,7 @@ impl Gen {
         let NodeVariant::Binop { btype, l, r } = n.variant.as_ref() else { unreachable!() };
         match btype {
             TokenType::Dot => self.gen_memb_access(l, r),
-            TokenType::Equal => self.mov(AsmArg::Node(l), AsmArg::Node(r)),
+            TokenType::Equal => self.mov(AsmArg::Node(l), AsmArg::Node(r), true),
             TokenType::Plus |
             TokenType::Minus |
             TokenType::Star |
@@ -77,7 +77,7 @@ impl Gen {
         // mov register, member
         let offset: i32 = l_offset + rel_offset;
         let reg: String = memb_dtype.variant.register('b', &self.scope)?;
-        self.mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset))
+        self.mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset), true)
     }
 
     fn gen_cmp(&mut self, l: &Node, r: &Node, _op: TokenType, jmp: &str) -> Result<String, Error> {
@@ -98,7 +98,7 @@ impl Gen {
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
         let lcmp: String = format!("{}{}",
             self.gen_cmp(l, &zero_node, TokenType::EqualCmp, "jne")?,
-            self.mov(AsmArg::Register(br.as_str()), AsmArg::Register(ar.as_str()))?,
+            self.mov(AsmArg::Register(br.as_str()), AsmArg::Register(ar.as_str()), true)?,
         );
 
         let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp, "jne")?;
