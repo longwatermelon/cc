@@ -18,6 +18,7 @@ impl Gen {
             TokenType::Star |
             TokenType::Div => self.asm_arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype),
             TokenType::EqualCmp => self.gen_cmp(l, r, "je"),
+            TokenType::NotEqual => self.gen_cmp(l, r, "jne"),
             TokenType::And |
             TokenType::Or => self.gen_andor(l, r, *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),

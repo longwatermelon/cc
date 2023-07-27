@@ -85,6 +85,7 @@ impl Gen {
             NodeVariant::Binop { btype: TokenType::Div, .. } =>
                 util::register('a', n, self),
             NodeVariant::Binop { btype: TokenType::EqualCmp, .. } |
+            NodeVariant::Binop { btype: TokenType::NotEqual, .. } |
             NodeVariant::Binop { btype: TokenType::Or, .. } |
             NodeVariant::Binop { btype: TokenType::And, .. } =>
                 util::register('a', n, self),

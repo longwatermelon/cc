@@ -19,10 +19,12 @@ pub enum TokenType {
     Minus,
     Div,
     EqualCmp,
+    NotEqual,
     Less,
     Greater,
     LessEqual,
     GreaterEqual,
+    Not,
     Dot,
     Arrow,
     And,
@@ -57,6 +59,7 @@ impl TokenType {
             TokenType::LessEqual |
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
+            TokenType::NotEqual |
             TokenType::Dot |
             TokenType::Equal |
             TokenType::And |
@@ -79,6 +82,7 @@ impl TokenType {
             TokenType::LessEqual |
             TokenType::GreaterEqual |
             TokenType::EqualCmp |
+            TokenType::NotEqual |
             TokenType::Equal => 1,
             TokenType::And |
             TokenType::Or => 0,
@@ -89,7 +93,8 @@ impl TokenType {
     pub fn is_unop(&self) -> bool {
         matches!(self,
             TokenType::Star |
-            TokenType::Amp
+            TokenType::Amp |
+            TokenType::Not
         )
     }
 }
@@ -149,7 +154,7 @@ impl Lexer {
                     if self.ch == '=' {
                         return Ok(self.advance_with_tok(TokenType::EqualCmp));
                     } else {
-                        return Ok(Token::new(TokenType::Equal, "=".to_string(), self.line));
+                        return Ok(Token::new(TokenType::Equal, String::from("="), self.line));
                     }
                 },
                 ',' => return Ok(self.advance_with_tok(TokenType::Comma)),
@@ -159,7 +164,7 @@ impl Lexer {
                     if self.ch == '&' {
                         return Ok(self.advance_with_tok(TokenType::And))
                     } else {
-                        return Ok(Token::new(TokenType::Amp, "&".to_string(), self.line))
+                        return Ok(Token::new(TokenType::Amp, String::from("&"), self.line))
                     }
                 },
                 '|' => {
@@ -179,7 +184,7 @@ impl Lexer {
                     if self.ch == '>' {
                         return Ok(self.advance_with_tok(TokenType::Arrow))
                     } else {
-                        return Ok(Token::new(TokenType::Minus, "-".to_string(), self.line))
+                        return Ok(Token::new(TokenType::Minus, String::from("-"), self.line))
                     }
                 },
                 '/' => return Ok(self.advance_with_tok(TokenType::Div)),
@@ -188,7 +193,7 @@ impl Lexer {
                     if self.ch == '=' {
                         return Ok(self.advance_with_tok(TokenType::LessEqual));
                     } else {
-                        return Ok(Token::new(TokenType::Less, "<".to_string(), self.line));
+                        return Ok(Token::new(TokenType::Less, String::from("<"), self.line));
                     }
                 },
                 '>' => {
@@ -196,9 +201,17 @@ impl Lexer {
                     if self.ch == '=' {
                         return Ok(self.advance_with_tok(TokenType::GreaterEqual));
                     } else {
-                        return Ok(Token::new(TokenType::Greater, ">".to_string(), self.line));
+                        return Ok(Token::new(TokenType::Greater, String::from(">"), self.line));
                     }
                 },
+                '!' => {
+                    self.advance();
+                    if self.ch == '=' {
+                        return Ok(self.advance_with_tok(TokenType::NotEqual));
+                    } else {
+                        return Ok(Token::new(TokenType::Not, String::from("!"), self.line));
+                    }
+                }
                 '.' => return Ok(self.advance_with_tok(TokenType::Dot)),
                 '\n' => {
                     self.line += 1;
@@ -216,7 +229,7 @@ impl Lexer {
 
     pub fn peek(&mut self, count: usize) -> Result<Token, Error> {
         let mut copy: Lexer = self.clone();
-        for _ in 0..count - 1 {
+        for _ in 0..(count - 1) {
             copy.next()?;
         }
 
