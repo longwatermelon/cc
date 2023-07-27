@@ -1,11 +1,16 @@
+#define bool int
+#define true 1
+#define false 0
+
 int main()
 {
-    int x = 1;
-    if (!(x == 1))
+    bool x = true;
+
+    if (!x)
     {
-        return 1;
+        return 99;
     }
 
-    return 199;
+    return 0;
 }
 

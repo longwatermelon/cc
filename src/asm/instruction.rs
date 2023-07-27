@@ -15,7 +15,7 @@ impl<'a> AsmArg<'a> {
         match self {
             AsmArg::Node(n) => gen.gen_repr(n),
             AsmArg::Register(reg) => Ok(reg.to_string()),
-            AsmArg::Stack(dtype, offset) => gen.gen_stack_repr(&dtype, *offset),
+            AsmArg::Stack(dtype, offset) => gen.gen_stack_repr(dtype, *offset),
         }
     }
 
@@ -81,6 +81,7 @@ impl Gen {
         let a_repr: String = a.repr(self)?;
         let b_repr: String = b.repr(self)?;
 
+        #[allow(clippy::format_in_format_args)]
         Ok(format!("\n\t; [cmp]{}{}\n\t; [end cmp]",
             exprs,
             format!("\n\tcmp {}, {}", a_repr, b_repr)
