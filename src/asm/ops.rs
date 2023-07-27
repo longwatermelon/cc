@@ -17,7 +17,7 @@ impl Gen {
             TokenType::Minus |
             TokenType::Star |
             TokenType::Div => self.asm_arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype),
-            TokenType::EqualCmp => self.gen_cmp(l, r, *btype, "je"),
+            TokenType::EqualCmp => self.gen_cmp(l, r, "je"),
             TokenType::And |
             TokenType::Or => self.gen_andor(l, r, *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
@@ -80,7 +80,7 @@ impl Gen {
         self.asm_mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset), true)
     }
 
-    fn gen_cmp(&mut self, l: &Node, r: &Node, _op: TokenType, jmp: &str) -> Result<String, Error> {
+    fn gen_cmp(&mut self, l: &Node, r: &Node, jmp: &str) -> Result<String, Error> {
         /*
             cmp l, r
             <zf conditional>
@@ -97,11 +97,11 @@ impl Gen {
 
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
         let lcmp: String = format!("{}{}",
-            self.gen_cmp(l, &zero_node, TokenType::EqualCmp, "jne")?,
+            self.gen_cmp(l, &zero_node, "jne")?,
             self.asm_mov(AsmArg::Register(br.as_str()), AsmArg::Register(ar.as_str()), true)?,
         );
 
-        let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp, "jne")?;
+        let rcmp: String = self.gen_cmp(r, &zero_node, "jne")?;
 
         let asmop: String = format!("\n\t; [andor]\n\t{} {}, {}\n\ttest {}, {}",
             match op {
