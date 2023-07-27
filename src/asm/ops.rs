@@ -103,7 +103,7 @@ impl Gen {
 
         let rcmp: String = self.gen_cmp(r, &zero_node, TokenType::EqualCmp, "jne")?;
 
-        let asmop: String = format!("\n\t{} {}, {}\n\ttest {}, {}",
+        let asmop: String = format!("\n\t; [andor]\n\t{} {}, {}\n\ttest {}, {}",
             match op {
                 TokenType::And => "and",
                 TokenType::Or => "or",

@@ -36,7 +36,7 @@ impl Gen {
         let res: String = if matches!(body.variant.as_ref(), NodeVariant::Noop) {
             String::new()
         } else {
-            format!("\n{}:\n\tpush rbp\n\tmov rbp, rsp\n{}\n\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?)
+            format!("\n\t; [fdef] begin\n{}:\n\tpush rbp\n\tmov rbp, rsp\n\n\t; [fdef] body{}\t; [fdef] end body\n\t; [fdef] backup return\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?)
         };
 
         self.scope.pop_layer();
@@ -50,7 +50,7 @@ impl Gen {
         let NodeVariant::Return { value } = n.variant.as_ref() else { unreachable!() };
         let reg: String = util::register('a', value, self)?;
         Ok(format!(
-            "{}{}",
+            "\n\t; [return] {}{}",
             self.mov(AsmArg::Register(reg.as_str()), AsmArg::Node(value), true)?,
             "\n\tmov rsp, rbp\n\tpop rbp\n\tret\n"
         ))
@@ -85,6 +85,7 @@ impl Gen {
             passed_args.push(param);
         }
 
+        res.push_str("\n\t; [fcall] push args");
         // Push in reverse order
         // TODO args can potentially modify the stack, which will mess up
         // parameter access inside the function, since the passed args will
@@ -106,7 +107,7 @@ impl Gen {
     }
 
     pub fn gen_init_list(&mut self, n: &Node) -> Result<String, Error> {
-        let mut res: String = String::new();
+        let mut res: String = String::from("\n\t; [init list]");
         let NodeVariant::InitList { dtype: _, fields } = n.variant.as_ref() else { unreachable!() };
         for field in fields.iter().rev() {
             self.scope.stack_offset_change_n(&field.1, -1)?;
@@ -137,7 +138,7 @@ impl Gen {
         self.label += 1;
 
         Ok(format!(
-            "{}{}",
+            "\n\t; [if]{}{}\n\t; [end if]",
             cmp,
             body_and_jmp,
         ))
@@ -157,7 +158,7 @@ impl Gen {
 
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, n.line);
         Ok(format!(
-            "\n.L{}:{}\n\t{}\n\tjne .L{}",
+            "\n\t; [while]\n.L{}:{}\n\t{}\n\tjne .L{}",
             label,
             self.gen_expr(body)?,
             self.cmp(AsmArg::Node(cond), AsmArg::Node(&zero_node))?,
@@ -181,7 +182,7 @@ impl Gen {
         }
         let mut res: String = self.gen_expr(value)?;
 
-        res.push_str("\n\t; [gen_vardef] stack offset change");
+        res.push_str("\n\t; [vardef] stack offset change");
         self.scope.stack_offset_change_n(n, -1)?;
         self.scope.push_vardef(n);
         res.push_str(&self.gen_stack_push(value)?);
