@@ -158,7 +158,7 @@ impl Gen {
 
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, n.line);
         Ok(format!(
-            "\n\t; [while]\n.L{}:{}\n\t{}\n\tjne .L{}",
+            "\n\t; [while]\n.L{}:{}\n\t{}\n\tjne .L{}\n\t; [end while]",
             label,
             self.gen_expr(body)?,
             self.cmp(AsmArg::Node(cond), AsmArg::Node(&zero_node))?,

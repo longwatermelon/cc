@@ -81,7 +81,7 @@ impl Gen {
         let a_repr: String = a.repr(self)?;
         let b_repr: String = b.repr(self)?;
 
-        Ok(format!("{}{}",
+        Ok(format!("\n\t; [cmp]{}{}\n\t; [end cmp]",
             exprs,
             format!("\n\tcmp {}, {}", a_repr, b_repr)
         ))
@@ -172,7 +172,7 @@ impl Gen {
             self.label - 1,
         );
 
-        format!("{}{}{}", jump, when_false, labels)
+        format!("\n\t; [zf cond]{}{}{}\n\t; [end zf cond]", jump, when_false, labels)
     }
 }
 
