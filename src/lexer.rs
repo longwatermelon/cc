@@ -29,14 +29,14 @@ pub enum TokenType {
     Arrow,
     And,
     Or,
-    Eof
+    Eof,
 }
 
 #[derive(Clone)]
 pub struct Token {
     pub ttype: TokenType,
     pub value: String,
-    pub line: usize
+    pub line: usize,
 }
 
 #[derive(Clone)]
@@ -44,66 +44,56 @@ pub struct Lexer {
     contents: String,
     pub line: usize,
     index: usize,
-    ch: char
+    ch: char,
 }
 
 impl TokenType {
     pub fn is_binop(&self) -> bool {
-        matches!(self,
-            TokenType::Plus  |
-            TokenType::Minus |
-            TokenType::Star  |
-            TokenType::Div   |
-            TokenType::Less  |
-            TokenType::Greater |
-            TokenType::LessEqual |
-            TokenType::GreaterEqual |
-            TokenType::EqualCmp |
-            TokenType::NotEqual |
-            TokenType::Dot |
-            TokenType::Equal |
-            TokenType::And |
-            TokenType::Or |
-            TokenType::Arrow
+        matches!(
+            self,
+            TokenType::Plus
+                | TokenType::Minus
+                | TokenType::Star
+                | TokenType::Div
+                | TokenType::Less
+                | TokenType::Greater
+                | TokenType::LessEqual
+                | TokenType::GreaterEqual
+                | TokenType::EqualCmp
+                | TokenType::NotEqual
+                | TokenType::Dot
+                | TokenType::Equal
+                | TokenType::And
+                | TokenType::Or
+                | TokenType::Arrow
         )
     }
 
     /// High weight binops will be the operands of low weight binops.
     pub fn binop_weight(&self) -> i32 {
         match self {
-            TokenType::Dot |
-            TokenType::Arrow => 3,
-            TokenType::Plus  |
-            TokenType::Minus |
-            TokenType::Star  |
-            TokenType::Div  => 2,
-            TokenType::Less  |
-            TokenType::Greater |
-            TokenType::LessEqual |
-            TokenType::GreaterEqual |
-            TokenType::EqualCmp |
-            TokenType::NotEqual |
-            TokenType::Equal => 1,
-            TokenType::And |
-            TokenType::Or => 0,
-            _ => panic!()
+            TokenType::Dot | TokenType::Arrow => 3,
+            TokenType::Plus | TokenType::Minus | TokenType::Star | TokenType::Div => 2,
+            TokenType::Less
+            | TokenType::Greater
+            | TokenType::LessEqual
+            | TokenType::GreaterEqual
+            | TokenType::EqualCmp
+            | TokenType::NotEqual
+            | TokenType::Equal => 1,
+            TokenType::And | TokenType::Or => 0,
+            _ => panic!(),
         }
     }
 
     pub fn is_unop(&self) -> bool {
-        matches!(self,
-            TokenType::Star |
-            TokenType::Amp |
-            TokenType::Not
-        )
+        matches!(self, TokenType::Star | TokenType::Amp | TokenType::Not)
     }
 }
 
 impl Token {
     pub fn new(ttype: TokenType, value: String, line: usize) -> Self {
-        Self {
-            ttype, value, line
-        }
+        Self { ttype, value, line }
     }
 }
 
@@ -113,7 +103,7 @@ impl Lexer {
             contents: contents.to_string(),
             line: 1,
             index: 0,
-            ch: contents.chars().next().unwrap()
+            ch: contents.chars().next().unwrap(),
         }
     }
 
@@ -156,37 +146,34 @@ impl Lexer {
                     } else {
                         return Ok(Token::new(TokenType::Equal, String::from("="), self.line));
                     }
-                },
+                }
                 ',' => return Ok(self.advance_with_tok(TokenType::Comma)),
                 '*' => return Ok(self.advance_with_tok(TokenType::Star)),
                 '&' => {
                     self.advance();
                     if self.ch == '&' {
-                        return Ok(self.advance_with_tok(TokenType::And))
+                        return Ok(self.advance_with_tok(TokenType::And));
                     } else {
-                        return Ok(Token::new(TokenType::Amp, String::from("&"), self.line))
+                        return Ok(Token::new(TokenType::Amp, String::from("&"), self.line));
                     }
-                },
+                }
                 '|' => {
                     self.advance();
                     if self.ch == '|' {
-                        return Ok(self.advance_with_tok(TokenType::Or))
+                        return Ok(self.advance_with_tok(TokenType::Or));
                     } else {
-                        return Err(Error::new(
-                            ErrorType::UnrecognizedToken(self.ch),
-                            self.line
-                        ))
+                        return Err(Error::new(ErrorType::UnrecognizedToken(self.ch), self.line));
                     }
-                },
+                }
                 '+' => return Ok(self.advance_with_tok(TokenType::Plus)),
                 '-' => {
                     self.advance();
                     if self.ch == '>' {
-                        return Ok(self.advance_with_tok(TokenType::Arrow))
+                        return Ok(self.advance_with_tok(TokenType::Arrow));
                     } else {
-                        return Ok(Token::new(TokenType::Minus, String::from("-"), self.line))
+                        return Ok(Token::new(TokenType::Minus, String::from("-"), self.line));
                     }
-                },
+                }
                 '/' => return Ok(self.advance_with_tok(TokenType::Div)),
                 '<' => {
                     self.advance();
@@ -195,7 +182,7 @@ impl Lexer {
                     } else {
                         return Ok(Token::new(TokenType::Less, String::from("<"), self.line));
                     }
-                },
+                }
                 '>' => {
                     self.advance();
                     if self.ch == '=' {
@@ -203,7 +190,7 @@ impl Lexer {
                     } else {
                         return Ok(Token::new(TokenType::Greater, String::from(">"), self.line));
                     }
-                },
+                }
                 '!' => {
                     self.advance();
                     if self.ch == '=' {
@@ -216,11 +203,8 @@ impl Lexer {
                 '\n' => {
                     self.line += 1;
                     self.advance()
-                },
-                _ => return Err(Error::new(
-                        ErrorType::UnrecognizedToken(self.ch),
-                        self.line
-                    ))
+                }
+                _ => return Err(Error::new(ErrorType::UnrecognizedToken(self.ch), self.line)),
             }
         }
 
@@ -284,4 +268,3 @@ impl Lexer {
         Token::new(ttype, String::from(ch), self.line)
     }
 }
-

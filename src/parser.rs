@@ -7,7 +7,7 @@ pub struct Parser {
     lexer: Lexer,
     curr: Token,
     prev: Token,
-    prev_expr: Node
+    prev_expr: Node,
 }
 
 impl Parser {
@@ -18,7 +18,7 @@ impl Parser {
             lexer,
             curr: curr.clone(),
             prev: curr,
-            prev_expr: Node::new(NodeVariant::Noop, 0)
+            prev_expr: Node::new(NodeVariant::Noop, 0),
         })
     }
 
@@ -27,12 +27,10 @@ impl Parser {
         let mut cpd_values: Vec<Node> = Vec::new();
 
         loop {
-            cpd_values.push(
-                match self.parse_expr(false)? {
-                    Some(x) => x,
-                    None => break
-                }
-            );
+            cpd_values.push(match self.parse_expr(false)? {
+                Some(x) => x,
+                None => break,
+            });
 
             if self.prev.ttype != TokenType::Rbrace && self.prev.ttype != TokenType::Semi {
                 self.expect(TokenType::Semi)?;
@@ -54,7 +52,7 @@ impl Parser {
         } else {
             Err(Error::new(
                 ErrorType::UnexpectedToken(self.curr.ttype, ttype),
-                self.curr.line
+                self.curr.line,
             ))
         }
     }
@@ -75,12 +73,18 @@ impl Parser {
                 self.expect(TokenType::Rbrace)?;
 
                 Some(node)
-            },
+            }
             TokenType::Lparen => {
                 let mut copy: Parser = self.clone();
                 copy.expect(TokenType::Lparen)?;
                 let dtype: Result<Dtype, Error> = copy.parse_dtype();
-                if dtype.is_ok() && copy.curr.ttype == TokenType::Rparen && copy.lexer.peek(1).is_ok_and(|x| x.ttype == TokenType::Lbrace) {
+                if dtype.is_ok()
+                    && copy.curr.ttype == TokenType::Rparen
+                    && copy
+                        .lexer
+                        .peek(1)
+                        .is_ok_and(|x| x.ttype == TokenType::Lbrace)
+                {
                     Some(self.parse_init_list()?)
                 } else {
                     self.expect(TokenType::Lparen)?;
@@ -90,8 +94,8 @@ impl Parser {
 
                     Some(expr)
                 }
-            },
-            _ => None
+            }
+            _ => None,
         };
 
         // Part of match, but can't put if in match
@@ -114,17 +118,30 @@ impl Parser {
         // Lexer guarantees this is a valid integer, it wouldn't be accepted otherwise
         let int_value: i32 = self.curr.value.parse::<i32>().unwrap();
         self.expect(TokenType::Int)?;
-        Ok(Node::new(NodeVariant::Int { value: int_value }, self.curr.line))
+        Ok(Node::new(
+            NodeVariant::Int { value: int_value },
+            self.curr.line,
+        ))
     }
 
     fn parse_str(&mut self) -> Result<Node, Error> {
         self.expect(TokenType::Str)?;
-        Ok(Node::new(NodeVariant::Str { value: self.prev.value.clone() }, self.curr.line))
+        Ok(Node::new(
+            NodeVariant::Str {
+                value: self.prev.value.clone(),
+            },
+            self.curr.line,
+        ))
     }
 
     fn parse_char(&mut self) -> Result<Node, Error> {
         self.expect(TokenType::Char)?;
-        Ok(Node::new(NodeVariant::Char { value: self.prev.value.clone().chars().next().unwrap() }, self.curr.line))
+        Ok(Node::new(
+            NodeVariant::Char {
+                value: self.prev.value.clone().chars().next().unwrap(),
+            },
+            self.curr.line,
+        ))
     }
 
     fn parse_dtype(&mut self) -> Result<Dtype, Error> {
@@ -150,12 +167,10 @@ impl Parser {
             "struct" => self.parse_struct(),
             "for" => self.parse_for(),
             "while" => self.parse_while(),
-            _ => {
-                match self.lexer.peek(1)?.ttype {
-                    TokenType::Lparen => self.parse_fcall(),
-                                    _ => self.parse_var()
-                }
-            }
+            _ => match self.lexer.peek(1)?.ttype {
+                TokenType::Lparen => self.parse_fcall(),
+                _ => self.parse_var(),
+            },
         }
     }
 
@@ -170,7 +185,7 @@ impl Parser {
         loop {
             match self.parse_expr(false)? {
                 Some(expr) => args.push(expr),
-                None => break
+                None => break,
             };
 
             if self.curr.ttype != TokenType::Rparen {
@@ -193,7 +208,7 @@ impl Parser {
         loop {
             match self.parse_expr(false)? {
                 Some(expr) => params.push(expr),
-                None => break
+                None => break,
             };
 
             if self.curr.ttype != TokenType::Rparen {
@@ -211,12 +226,25 @@ impl Parser {
             b
         };
 
-        Ok(Node::new(NodeVariant::Fdef { name, params, body, rtype }, line))
+        Ok(Node::new(
+            NodeVariant::Fdef {
+                name,
+                params,
+                body,
+                rtype,
+            },
+            line,
+        ))
     }
 
     fn parse_return(&mut self) -> Result<Node, Error> {
         self.expect(TokenType::Id)?;
-        Ok(Node::new(NodeVariant::Return { value: self.parse_expr(false)?.unwrap() }, self.curr.line))
+        Ok(Node::new(
+            NodeVariant::Return {
+                value: self.parse_expr(false)?.unwrap(),
+            },
+            self.curr.line,
+        ))
     }
 
     fn parse_var(&mut self) -> Result<Node, Error> {
@@ -233,7 +261,13 @@ impl Parser {
 
     fn parse_unop(&mut self) -> Result<Node, Error> {
         self.expect(self.curr.ttype)?;
-        Ok(Node::new(NodeVariant::Unop { utype: self.prev.ttype, r: self.parse_expr(true)?.unwrap() }, self.curr.line))
+        Ok(Node::new(
+            NodeVariant::Unop {
+                utype: self.prev.ttype,
+                r: self.parse_expr(true)?.unwrap(),
+            },
+            self.curr.line,
+        ))
     }
 
     fn parse_vardef(&mut self) -> Result<Node, Error> {
@@ -245,26 +279,32 @@ impl Parser {
         match self.curr.ttype {
             TokenType::Equal => {
                 self.expect(TokenType::Equal)?;
-                Ok(
-                    Node::new(NodeVariant::Vardef {
+                Ok(Node::new(
+                    NodeVariant::Vardef {
                         var: var.clone(),
-                        value:
-                            match self.parse_expr(false)? {
-                                Some(x) => x,
-                                None => return Err(Error::new(
+                        value: match self.parse_expr(false)? {
+                            Some(x) => x,
+                            None => {
+                                return Err(Error::new(
                                     ErrorType::VardefNoExpression(var.var_name().as_str()),
-                                    line
+                                    line,
                                 ))
-                            },
-                        dtype
-                        }, line
-                    )
-                )
-            },
-            TokenType::Lparen => {
-                self.parse_fdef(dtype)
-            },
-            _ => Ok(Node::new(NodeVariant::Vardef { var, value: Node::new(NodeVariant::Noop, 0), dtype }, line))
+                            }
+                        },
+                        dtype,
+                    },
+                    line,
+                ))
+            }
+            TokenType::Lparen => self.parse_fdef(dtype),
+            _ => Ok(Node::new(
+                NodeVariant::Vardef {
+                    var,
+                    value: Node::new(NodeVariant::Noop, 0),
+                    dtype,
+                },
+                line,
+            )),
         }
     }
 
@@ -276,12 +316,13 @@ impl Parser {
         let cond: Node = self.parse_expr(false)?.unwrap();
         self.expect(TokenType::Rparen)?;
 
-        Ok(
-            Node::new(
-                NodeVariant::If { cond, body: self.parse_expr(false)?.unwrap() },
-                line
-            )
-        )
+        Ok(Node::new(
+            NodeVariant::If {
+                cond,
+                body: self.parse_expr(false)?.unwrap(),
+            },
+            line,
+        ))
     }
 
     fn parse_binop(&mut self) -> Result<Node, Error> {
@@ -293,12 +334,26 @@ impl Parser {
         // Only parse expression between operators
         let r: Node = self.parse_expr(true)?.unwrap();
 
-        let n: Node = Node::new(NodeVariant::Binop { btype, l: l.clone(), r }, line);
+        let n: Node = Node::new(
+            NodeVariant::Binop {
+                btype,
+                l: l.clone(),
+                r,
+            },
+            line,
+        );
 
         if self.curr.ttype.is_binop() {
             // curr has higher precedence than btype
             if btype.binop_weight() < self.curr.ttype.binop_weight() {
-                Ok(Node::new(NodeVariant::Binop { btype, l, r: self.parse_expr(false)?.unwrap() }, self.curr.line))
+                Ok(Node::new(
+                    NodeVariant::Binop {
+                        btype,
+                        l,
+                        r: self.parse_expr(false)?.unwrap(),
+                    },
+                    self.curr.line,
+                ))
             } else {
                 self.prev_expr = n;
                 self.parse_binop()
@@ -347,7 +402,15 @@ impl Parser {
 
         let body: Node = self.parse_expr(false)?.unwrap();
 
-        Ok(Node::new(NodeVariant::For { init, cond, inc, body }, line))
+        Ok(Node::new(
+            NodeVariant::For {
+                init,
+                cond,
+                inc,
+                body,
+            },
+            line,
+        ))
     }
 
     fn parse_while(&mut self) -> Result<Node, Error> {
@@ -390,4 +453,3 @@ impl Parser {
         Ok(Node::new(NodeVariant::InitList { dtype, fields }, line))
     }
 }
-

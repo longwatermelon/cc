@@ -1,10 +1,10 @@
-use super::Gen;
 use super::instruction::AsmArg;
 use super::util;
-use crate::error::{Error, ErrorType};
-use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
-use crate::scope::ScopeLayer;
+use super::Gen;
 use crate::cdefs::{CFdef, CVardef};
+use crate::error::{Error, ErrorType};
+use crate::node::{Dtype, DtypeVariant, Node, NodeVariant};
+use crate::scope::ScopeLayer;
 
 impl Gen {
     pub fn gen_cpd(&mut self, n: &Node) -> Result<String, Error> {
@@ -12,7 +12,7 @@ impl Gen {
         let mut res: String = String::new();
 
         for n in values {
-            res.push_str(&self.gen_expr(n)?);
+            res.push_str(self.gen_expr(n)?.as_str());
         }
 
         Ok(res)
@@ -30,7 +30,8 @@ impl Gen {
         let fdef: CFdef = self.scope.find_fdef(name, n.line)?.clone();
         let NodeVariant::Fdef { params, .. } = fdef.node.variant.as_ref() else { unreachable!() };
         for (i, param) in params.clone().iter().enumerate() {
-            self.scope.push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
+            self.scope
+                .push_cvardef(&CVardef::new(param, fdef.param_stack_offsets[i]));
         }
 
         let res: String = if matches!(body.variant.as_ref(), NodeVariant::Noop) {
@@ -69,12 +70,10 @@ impl Gen {
 
         // Check if equal
         if args.len() != params.len() {
-            return Err(
-                Error::new(
-                    ErrorType::FunctionArgParamMismatch(name.as_str(), args.len(), params.len()),
-                    n.line
-                )
-            );
+            return Err(Error::new(
+                ErrorType::FunctionArgParamMismatch(name.as_str(), args.len(), params.len()),
+                n.line,
+            ));
         }
 
         // Fill in argument values to be passed
@@ -91,7 +90,7 @@ impl Gen {
         // parameter access inside the function, since the passed args will
         // be separated by the preparation process.
         for arg in passed_args.iter().rev() {
-            res.push_str(&self.gen_vardef(arg)?);
+            res.push_str(self.gen_vardef(arg)?.as_str());
         }
 
         // Only the generated assembly is needed, side effect of variables pushed
@@ -102,7 +101,7 @@ impl Gen {
         }
 
         // Same between x86 and x86_64
-        res.push_str(&format!("\n\tcall {}", name));
+        res.push_str(format!("\n\tcall {}", name).as_str());
         Ok(res)
     }
 
@@ -129,19 +128,11 @@ impl Gen {
         //     <rest of the program>
         // If cmp is equal (cond is true) then skip if body, or jump to .Lx
         let label: usize = self.label;
-        let body_and_jmp: String = format!(
-            "\n\tje .L{}{}\n.L{}:",
-            label,
-            self.gen_expr(body)?,
-            label,
-        );
+        let body_and_jmp: String =
+            format!("\n\tje .L{}{}\n.L{}:", label, self.gen_expr(body)?, label,);
         self.label += 1;
 
-        Ok(format!(
-            "\n\t; [if]{}{}\n\t; [end if]",
-            cmp,
-            body_and_jmp,
-        ))
+        Ok(format!("\n\t; [if]{}{}\n\t; [end if]", cmp, body_and_jmp,))
     }
 
     pub fn gen_while(&mut self, n: &Node) -> Result<String, Error> {
@@ -174,12 +165,10 @@ impl Gen {
         let value_dtype: Dtype = value.dtype(&self.scope)?;
         let n_dtype: Dtype = n.dtype(&self.scope)?;
         if value_dtype != n_dtype {
-            return Err(
-                Error::new(
-                    ErrorType::AssignTypeMismatch(n_dtype, value_dtype),
-                    n.line
-                )
-            );
+            return Err(Error::new(
+                ErrorType::AssignTypeMismatch(n_dtype, value_dtype),
+                n.line,
+            ));
         }
         let mut res: String = self.gen_expr(value)?;
 
@@ -196,30 +185,31 @@ impl Gen {
     /// * If the stack needs to grow, change the stack offset before this function call.
     /// * gen_expr the value getting pushed onto the stack if needed, this function won't do it.
     pub fn gen_stack_push(&mut self, pushed: &Node) -> Result<String, Error> {
-        Ok(
-            match pushed.dtype(&self.scope)?.variant {
-                // gen_init_list pushes variables onto the stack
-                DtypeVariant::Struct {..} => {
-                    self.scope.stack_offset_change_n(pushed, 1)?;
-                    let pushed: &Node = pushed.strip(&self.scope)?;
+        Ok(match pushed.dtype(&self.scope)?.variant {
+            // gen_init_list pushes variables onto the stack
+            DtypeVariant::Struct { .. } => {
+                self.scope.stack_offset_change_n(pushed, 1)?;
+                let pushed: &Node = pushed.strip(&self.scope)?;
 
-                    self.gen_init_list(&pushed.clone())?
-                },
-                _ => {
-                    let nbytes: i32 = pushed.dtype(&self.scope)?
-                                            .variant
-                                            .num_bytes(&self.scope)?;
-
-                    format!("{}{}",
-                        self.asm_extend_stack(nbytes),
-                        self.gen_stack_modify(pushed, self.scope.stack_offset())?
-                    )
-                },
+                self.gen_init_list(&pushed.clone())?
             }
-        )
+            _ => {
+                let nbytes: i32 = pushed.dtype(&self.scope)?.variant.num_bytes(&self.scope)?;
+
+                format!(
+                    "{}{}",
+                    self.asm_extend_stack(nbytes),
+                    self.gen_stack_modify(pushed, self.scope.stack_offset())?
+                )
+            }
+        })
     }
 
-    pub fn gen_stack_modify(&mut self, pushed: &Node, target_stack_offset: i32) -> Result<String, Error> {
+    pub fn gen_stack_modify(
+        &mut self,
+        pushed: &Node,
+        target_stack_offset: i32,
+    ) -> Result<String, Error> {
         let pushed_dtype: Dtype = pushed.dtype(&self.scope)?;
         self.asm_mov(
             AsmArg::Stack(&pushed_dtype, target_stack_offset),
@@ -232,4 +222,3 @@ impl Gen {
         Ok(String::new())
     }
 }
-

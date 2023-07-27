@@ -11,7 +11,10 @@ pub struct CVardef {
 
 impl CVardef {
     pub fn new(node: &Node, stack_offset: i32) -> Self {
-        Self { node: node.clone(), stack_offset }
+        Self {
+            node: node.clone(),
+            stack_offset,
+        }
     }
 }
 
@@ -33,7 +36,10 @@ impl CFdef {
             offset += param.dtype(scope)?.variant.num_bytes(scope)?;
         }
 
-        Ok(Self { node: node.clone(), param_stack_offsets: stack_offsets })
+        Ok(Self {
+            node: node.clone(),
+            param_stack_offsets: stack_offsets,
+        })
     }
 }
 
@@ -55,19 +61,22 @@ impl CStruct {
             offset += field.dtype(scope)?.variant.num_bytes(scope)?;
         }
 
-        Ok(Self { node: node.clone(), memb_stack_offsets: stack_offsets })
+        Ok(Self {
+            node: node.clone(),
+            memb_stack_offsets: stack_offsets,
+        })
     }
 
     pub fn offset_of(&self, field_name: &str, err_line: usize) -> Result<i32, Error> {
         let NodeVariant::Struct { name, fields } = self.node.variant.as_ref() else { unreachable!() };
-        let index: usize = fields.iter().position(|x|
-            x.vardef_name() == field_name
-        ).ok_or(Error::new(
-            ErrorType::NonexistentStructMember(name.as_str(), field_name),
-            err_line
-        ))?;
+        let index: usize = fields
+            .iter()
+            .position(|x| x.vardef_name() == field_name)
+            .ok_or(Error::new(
+                ErrorType::NonexistentStructMember(name.as_str(), field_name),
+                err_line,
+            ))?;
 
         Ok(self.memb_stack_offsets[index])
     }
 }
-

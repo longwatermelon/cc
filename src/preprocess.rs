@@ -3,41 +3,52 @@ use std::fs;
 #[derive(Clone, PartialEq, Debug)]
 struct Definition {
     name: String,
-    expr: Option<String>
+    expr: Option<String>,
 }
 
 enum IfType {
     Ifndef,
-    Ifdef
+    Ifdef,
 }
 
 struct IfPair {
     variant: IfType,
     if_expr: String,
-    start: usize
+    start: usize,
 }
 
 pub struct Preprocessor {
     prog: String,
     defs: Vec<Vec<Definition>>,
-    pending_ifs: Vec<IfPair>
+    pending_ifs: Vec<IfPair>,
 }
 
 impl Definition {
     fn new(name: &str, expr: Option<&str>) -> Self {
-        Self { name: name.to_string(), expr: expr.map(str::to_string) }
+        Self {
+            name: name.to_string(),
+            expr: expr.map(str::to_string),
+        }
     }
 }
 
 impl IfPair {
     fn new(variant: IfType, expr: &str, start: usize) -> Self {
-        Self { variant, if_expr: expr.to_string(), start }
+        Self {
+            variant,
+            if_expr: expr.to_string(),
+            start,
+        }
     }
 }
 
 impl Preprocessor {
     pub fn new(prog: &str) -> Self {
-        Self { prog: prog.to_string(), defs: vec![Vec::new()], pending_ifs: Vec::new() }
+        Self {
+            prog: prog.to_string(),
+            defs: vec![Vec::new()],
+            pending_ifs: Vec::new(),
+        }
     }
 
     pub fn preprocess(&mut self) {
@@ -65,7 +76,7 @@ impl Preprocessor {
                     "ifndef" => return self.process_if(start, i, IfType::Ifndef),
                     "ifdef" => return self.process_if(start, i, IfType::Ifdef),
                     "endif" => return self.process_endif(start, i),
-                    _ => panic!()
+                    _ => panic!(),
                 }
             }
         }
@@ -74,7 +85,15 @@ impl Preprocessor {
     fn replace_defs(&mut self) {
         for layer in self.defs.clone() {
             for def in &layer {
-                self.prog = self.prog.replace(def.name.as_str(), if let Some(id) = def.expr.clone() { id } else { String::new() }.as_str());
+                self.prog = self.prog.replace(
+                    def.name.as_str(),
+                    if let Some(id) = def.expr.clone() {
+                        id
+                    } else {
+                        String::new()
+                    }
+                    .as_str(),
+                );
             }
         }
     }
@@ -92,7 +111,10 @@ impl Preprocessor {
         }
         index += 1;
 
-        self.prog.replace_range(start..index, fs::read_to_string(path.as_str()).unwrap().as_str());
+        self.prog.replace_range(
+            start..index,
+            fs::read_to_string(path.as_str()).unwrap().as_str(),
+        );
     }
 
     fn process_define(&mut self, start: usize, mut index: usize) {
@@ -119,7 +141,10 @@ impl Preprocessor {
         }
 
         // self.defs is guaranteed to have last element
-        self.defs.iter_mut().last().unwrap().push(Definition::new(id.as_str(), if expr.is_empty() { None } else { Some(&expr) }));
+        self.defs.iter_mut().last().unwrap().push(Definition::new(
+            id.as_str(),
+            if expr.is_empty() { None } else { Some(&expr) },
+        ));
         self.prog.replace_range(start..index, "");
     }
 
@@ -135,7 +160,8 @@ impl Preprocessor {
             index += 1;
         }
 
-        self.pending_ifs.push(IfPair::new(variant, id.as_str(), start));
+        self.pending_ifs
+            .push(IfPair::new(variant, id.as_str(), start));
         self.prog.replace_range(start..index, "");
     }
 
@@ -155,7 +181,7 @@ impl Preprocessor {
 
             if match last.variant {
                 IfType::Ifndef => exists,
-                IfType::Ifdef => !exists
+                IfType::Ifdef => !exists,
             } {
                 // Remove contents
                 self.prog.replace_range(last.start..start, "");
@@ -176,4 +202,3 @@ impl Preprocessor {
         self.prog.clone()
     }
 }
-

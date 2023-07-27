@@ -1,7 +1,7 @@
-use crate::error::Error;
 use crate::asm::Gen;
-use crate::node::{Node, Dtype};
+use crate::error::Error;
 use crate::lexer::TokenType;
+use crate::node::{Dtype, Node};
 
 pub enum AsmArg<'a> {
     Node(&'a Node),
@@ -40,11 +40,14 @@ impl<'a> AsmArg<'a> {
 impl Gen {
     pub fn asm_mov(&mut self, dest: AsmArg, src: AsmArg, gen_exprs: bool) -> Result<String, Error> {
         let exprs: String = if gen_exprs {
-            format!("{}{}",
+            format!(
+                "{}{}",
                 dest.gen_expr_if_needed(self)?,
                 src.gen_expr_if_needed(self)?
             )
-        } else { String::new() };
+        } else {
+            String::new()
+        };
 
         // Get dest and src asm reprs
         let dest_repr: String = dest.repr(self)?;
@@ -64,10 +67,7 @@ impl Gen {
             format!("\n\tmov {}, {}", dest_repr, src_repr)
         };
 
-        Ok(format!("{}{}",
-            exprs,
-            src_to_dest
-        ))
+        Ok(format!("{}{}", exprs, src_to_dest))
     }
 
     /// Result in eax
@@ -82,7 +82,8 @@ impl Gen {
         let b_repr: String = b.repr(self)?;
 
         #[allow(clippy::format_in_format_args)]
-        Ok(format!("\n\t; [cmp]{}{}\n\t; [end cmp]",
+        Ok(format!(
+            "\n\t; [cmp]{}{}\n\t; [end cmp]",
             exprs,
             format!("\n\tcmp {}, {}", a_repr, b_repr)
         ))
@@ -115,12 +116,12 @@ impl Gen {
         let astack_to_reg: String = self.asm_mov(
             AsmArg::Register(reg_a.as_str()),
             AsmArg::Stack(&na.dtype(&self.scope)?, aoffset),
-            false
+            false,
         )?;
         let bstack_to_reg: String = self.asm_mov(
             AsmArg::Register(reg_b.as_str()),
             AsmArg::Stack(&nb.dtype(&self.scope)?, boffset),
-            false
+            false,
         )?;
 
         Ok(format!(
@@ -161,9 +162,7 @@ impl Gen {
         let jump: String = format!("\n\t{} .L{}", jmp, self.label);
         self.label += 1;
 
-        let when_false: String = format!("\n\tmov {}, 0\n\tjmp .L{}",
-            result_reg, self.label
-        );
+        let when_false: String = format!("\n\tmov {}, 0\n\tjmp .L{}", result_reg, self.label);
         self.label += 1;
 
         let labels: String = format!(
@@ -173,7 +172,9 @@ impl Gen {
             self.label - 1,
         );
 
-        format!("\n\t; [zf cond]{}{}{}\n\t; [end zf cond]", jump, when_false, labels)
+        format!(
+            "\n\t; [zf cond]{}{}{}\n\t; [end zf cond]",
+            jump, when_false, labels
+        )
     }
 }
-

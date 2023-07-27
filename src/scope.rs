@@ -1,15 +1,18 @@
+use crate::cdefs::{CFdef, CStruct, CVardef};
 use crate::error::{Error, ErrorType};
-use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
-use crate::cdefs::{CFdef, CVardef, CStruct};
+use crate::node::{Dtype, DtypeVariant, Node, NodeVariant};
 
 pub struct ScopeLayer {
     vardefs: Vec<CVardef>,
-    stack_offset: i32
+    stack_offset: i32,
 }
 
 impl ScopeLayer {
     fn new() -> Self {
-        Self { vardefs: Vec::new(), stack_offset: 0 }
+        Self {
+            vardefs: Vec::new(),
+            stack_offset: 0,
+        }
     }
 
     fn push_vardef(&mut self, v: CVardef) {
@@ -24,12 +27,16 @@ impl ScopeLayer {
 pub struct Scope {
     layers: Vec<ScopeLayer>,
     fdefs: Vec<CFdef>,
-    structs: Vec<CStruct>
+    structs: Vec<CStruct>,
 }
 
 impl Scope {
     pub fn new() -> Self {
-        Self { layers: vec![ScopeLayer::new()], fdefs: Vec::new(), structs: Vec::new() }
+        Self {
+            layers: vec![ScopeLayer::new()],
+            fdefs: Vec::new(),
+            structs: Vec::new(),
+        }
     }
 
     pub fn push_layer(&mut self) {
@@ -48,7 +55,10 @@ impl Scope {
     pub fn push_vardef(&mut self, n: &Node) {
         // self.layers must have len >= 1
         let offset: i32 = self.stack_offset();
-        self.layers.last_mut().unwrap().push_vardef(CVardef::new(n, offset));
+        self.layers
+            .last_mut()
+            .unwrap()
+            .push_vardef(CVardef::new(n, offset));
     }
 
     pub fn pop_vardef(&mut self) -> CVardef {
@@ -71,7 +81,7 @@ impl Scope {
                 if params.len() != orig_params.len() || rtype.variant != orig_rtype.variant {
                     return Err(Error::new(
                         ErrorType::FunctionDeclDefMismatch(fname.as_str()),
-                        n.line
+                        n.line,
                     ));
                 }
 
@@ -81,10 +91,7 @@ impl Scope {
                     name != fname
                 });
             } else {
-                return Err(Error::new(
-                    ErrorType::DuplicateFdef(fname.as_str()),
-                    n.line
-                ));
+                return Err(Error::new(ErrorType::DuplicateFdef(fname.as_str()), n.line));
             }
         }
 
@@ -109,7 +116,7 @@ impl Scope {
             } else {
                 return Err(Error::new(
                     ErrorType::DuplicateSdef(orig_name.as_str()),
-                    n.line
+                    n.line,
                 ));
             }
         }
@@ -148,19 +155,15 @@ impl Scope {
 
     pub fn find_vardef(&self, name: &str, err_line: usize) -> Result<&CVardef, Error> {
         for layer in self.layers.iter().rev() {
-            let result: Option<&CVardef> = layer.vardefs.iter().find(|&x|
-                x.node.vardef_name() == name
-            );
+            let result: Option<&CVardef> =
+                layer.vardefs.iter().find(|&x| x.node.vardef_name() == name);
 
             if let Some(res) = result {
                 return Ok(res);
             }
         }
 
-        Err(Error::new(
-            ErrorType::NonexistentVariable(name),
-            err_line
-        ))
+        Err(Error::new(ErrorType::NonexistentVariable(name), err_line))
     }
 
     pub fn stack_offset(&self) -> i32 {
@@ -176,4 +179,3 @@ impl Scope {
         Ok(())
     }
 }
-

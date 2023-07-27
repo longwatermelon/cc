@@ -1,5 +1,5 @@
 use crate::lexer::TokenType;
-use crate::node::{Node, Dtype};
+use crate::node::{Dtype, Node};
 use colored::Colorize;
 
 #[derive(Debug)]
@@ -42,36 +42,45 @@ pub enum ErrorType<'a> {
 impl<'a> ErrorType<'a> {
     pub fn message(&self) -> String {
         match self {
-            ErrorType::UnrecognizedToken(tok) =>
-                format!("Unrecognized token '{}'.", tok),
-            ErrorType::UnexpectedToken(recv, expect) =>
-                format!("Expected {:?}, received {:?}.", expect, recv),
-            ErrorType::VardefNoExpression(name) =>
-                format!("Definition of variable '{}' has no expression.", name),
-            ErrorType::NonexistentStructMember(sname, member) =>
-                format!("Struct '{}' has no member '{}'.", sname, member),
-            ErrorType::InvalidDtypeFromStr(dtype) =>
-                format!("'{}' is not a valid data type.", dtype),
-            ErrorType::FunctionArgParamMismatch(name, nargs, nparams) =>
-                format!("Function '{}' takes in {} parameters but was passed {} arguments.", name, nparams, nargs),
-            ErrorType::AssignTypeMismatch(dest, src) =>
-                format!("Attempting to assign type '{}' to type '{}'.", src, dest),
-            ErrorType::StructMemberVarNonId(node) =>
-                format!("Struct member access must be an identifier; received '{:?}'.", node),
-            ErrorType::PrimitiveMemberAccess(stype) =>
-                format!("Attempting to access member variable of non-struct type '{}'.", stype),
-            ErrorType::FunctionDeclDefMismatch(name) =>
-                format!("Function declaration and definition of '{}' do not align.", name),
-            ErrorType::DuplicateFdef(name) =>
-                format!("Duplicate definition of function '{}'.", name),
-            ErrorType::DuplicateSdef(name) =>
-                format!("Duplicate definition of struct '{}'.", name),
-            ErrorType::NonexistentFunction(name) =>
-                format!("Function '{}' does not exist.", name),
-            ErrorType::NonexistentStruct(name) =>
-                format!("Struct '{}' does not exist.", name),
-            ErrorType::NonexistentVariable(name) =>
-                format!("Variable '{}' does not exist.", name),
+            ErrorType::UnrecognizedToken(tok) => format!("Unrecognized token '{}'.", tok),
+            ErrorType::UnexpectedToken(recv, expect) => {
+                format!("Expected {:?}, received {:?}.", expect, recv)
+            }
+            ErrorType::VardefNoExpression(name) => {
+                format!("Definition of variable '{}' has no expression.", name)
+            }
+            ErrorType::NonexistentStructMember(sname, member) => {
+                format!("Struct '{}' has no member '{}'.", sname, member)
+            }
+            ErrorType::InvalidDtypeFromStr(dtype) => {
+                format!("'{}' is not a valid data type.", dtype)
+            }
+            ErrorType::FunctionArgParamMismatch(name, nargs, nparams) => format!(
+                "Function '{}' takes in {} parameters but was passed {} arguments.",
+                name, nparams, nargs
+            ),
+            ErrorType::AssignTypeMismatch(dest, src) => {
+                format!("Attempting to assign type '{}' to type '{}'.", src, dest)
+            }
+            ErrorType::StructMemberVarNonId(node) => format!(
+                "Struct member access must be an identifier; received '{:?}'.",
+                node
+            ),
+            ErrorType::PrimitiveMemberAccess(stype) => format!(
+                "Attempting to access member variable of non-struct type '{}'.",
+                stype
+            ),
+            ErrorType::FunctionDeclDefMismatch(name) => format!(
+                "Function declaration and definition of '{}' do not align.",
+                name
+            ),
+            ErrorType::DuplicateFdef(name) => {
+                format!("Duplicate definition of function '{}'.", name)
+            }
+            ErrorType::DuplicateSdef(name) => format!("Duplicate definition of struct '{}'.", name),
+            ErrorType::NonexistentFunction(name) => format!("Function '{}' does not exist.", name),
+            ErrorType::NonexistentStruct(name) => format!("Struct '{}' does not exist.", name),
+            ErrorType::NonexistentVariable(name) => format!("Variable '{}' does not exist.", name),
         }
     }
 }
@@ -86,23 +95,43 @@ impl Error {
     pub fn new(etype: ErrorType, line: usize) -> Self {
         Self {
             message: etype.message(),
-            line
+            line,
         }
     }
 
     pub fn print(&self, prog: &str) {
         let split: Vec<&str> = prog.split('\n').collect();
-        println!("{}: Line {}: {}", "error".bright_red(), self.line, self.message);
-        let longest: usize = *[self.line - 1, self.line, self.line + 1].map(|x| x.to_string().len()).iter().max().unwrap();
+        println!(
+            "{}: Line {}: {}",
+            "error".bright_red(),
+            self.line,
+            self.message
+        );
+        let longest: usize = *[self.line - 1, self.line, self.line + 1]
+            .map(|x| x.to_string().len())
+            .iter()
+            .max()
+            .unwrap();
         for i in -1i32..=1 {
             if (i + self.line as i32) < 0 || (i + self.line as i32) >= split.len() as i32 {
                 continue;
             }
 
             let padding: usize = longest - (self.line as i32 + i).to_string().len();
-            let format: String = format!("  {}{} | {}", self.line as i32 + i, " ".repeat(padding), split[(self.line as i32 + i - 1) as usize]);
-            println!("{}", if i == 0 { format.white().bold() } else { format.truecolor(150, 150, 150) });
+            let format: String = format!(
+                "  {}{} | {}",
+                self.line as i32 + i,
+                " ".repeat(padding),
+                split[(self.line as i32 + i - 1) as usize]
+            );
+            println!(
+                "{}",
+                if i == 0 {
+                    format.white().bold()
+                } else {
+                    format.truecolor(150, 150, 150)
+                }
+            );
         }
     }
 }
-

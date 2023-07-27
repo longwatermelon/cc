@@ -1,10 +1,10 @@
-use super::Gen;
 use super::instruction::AsmArg;
 use super::util;
-use crate::error::{Error, ErrorType};
-use crate::node::{Node, NodeVariant, Dtype, DtypeVariant};
-use crate::lexer::TokenType;
+use super::Gen;
 use crate::cdefs::CStruct;
+use crate::error::{Error, ErrorType};
+use crate::lexer::TokenType;
+use crate::node::{Dtype, DtypeVariant, Node, NodeVariant};
 use crate::scope::Scope;
 
 impl Gen {
@@ -13,14 +13,12 @@ impl Gen {
         match btype {
             TokenType::Dot => self.gen_memb_access(l, r),
             TokenType::Equal => self.asm_mov(AsmArg::Node(l), AsmArg::Node(r), true),
-            TokenType::Plus |
-            TokenType::Minus |
-            TokenType::Star |
-            TokenType::Div => self.asm_arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype),
+            TokenType::Plus | TokenType::Minus | TokenType::Star | TokenType::Div => {
+                self.asm_arithmetic(AsmArg::Node(l), AsmArg::Node(r), *btype)
+            }
             TokenType::EqualCmp => self.gen_cmp(l, r, "je"),
             TokenType::NotEqual => self.gen_cmp(l, r, "jne"),
-            TokenType::And |
-            TokenType::Or => self.gen_andor(l, r, *btype),
+            TokenType::And | TokenType::Or => self.gen_andor(l, r, *btype),
             _ => panic!("[Gen::gen_binop] Binop {:?} not supported.", btype),
         }
     }
@@ -35,20 +33,14 @@ impl Gen {
 
     fn gen_memb_access(&mut self, l: &Node, r: &Node) -> Result<String, Error> {
         // Member access must be an identifier
-        if !matches!(r.variant.as_ref(), NodeVariant::Var {..}) {
-            return Err(Error::new(
-                ErrorType::StructMemberVarNonId(r),
-                r.line
-            ));
+        if !matches!(r.variant.as_ref(), NodeVariant::Var { .. }) {
+            return Err(Error::new(ErrorType::StructMemberVarNonId(r), r.line));
         }
 
         // Only structs have member variables
         let dtype: Dtype = l.dtype(&self.scope)?;
-        if !matches!(dtype.variant, DtypeVariant::Struct {..}) {
-            return Err(Error::new(
-                ErrorType::PrimitiveMemberAccess(dtype),
-                l.line
-            ));
+        if !matches!(dtype.variant, DtypeVariant::Struct { .. }) {
+            return Err(Error::new(ErrorType::PrimitiveMemberAccess(dtype), l.line));
         }
 
         // Get offset of member specified by r
@@ -56,10 +48,15 @@ impl Gen {
         fn nested_offset<'a>(n: &'a Node, scope: &'a Scope) -> Result<(i32, &'a CStruct), Error> {
             if let NodeVariant::Binop { l, r, .. } = n.variant.as_ref() {
                 let (offset, sdef) = nested_offset(l, scope)?;
-                Ok((offset + sdef.offset_of(r.var_name().as_str(), r.line)?, scope.find_struct_dtype(n.dtype(scope)?, n.line)?))
+                Ok((
+                    offset + sdef.offset_of(r.var_name().as_str(), r.line)?,
+                    scope.find_struct_dtype(n.dtype(scope)?, n.line)?,
+                ))
             } else {
                 // n is a var type
-                let offset: i32 = scope.find_vardef(n.var_name().as_str(), n.line)?.stack_offset;
+                let offset: i32 = scope
+                    .find_vardef(n.var_name().as_str(), n.line)?
+                    .stack_offset;
                 Ok((offset, scope.find_struct_dtype(n.dtype(scope)?, n.line)?))
             }
         }
@@ -71,14 +68,13 @@ impl Gen {
         // Get offset of right operand relative to possibly nested expression's struct type
         let memb_name: String = r.var_name();
         let NodeVariant::Struct { fields, .. } = sdef.node.variant.as_ref() else { unreachable!() };
-        let index: usize = fields.iter()
-                            .position(|x| x.vardef_name() == memb_name)
-                            .ok_or(
-                                Error::new(
-                                    ErrorType::NonexistentStructMember(sdef_name.as_str(), memb_name.as_str()),
-                                    l.line
-                                )
-                            )?;
+        let index: usize = fields
+            .iter()
+            .position(|x| x.vardef_name() == memb_name)
+            .ok_or(Error::new(
+                ErrorType::NonexistentStructMember(sdef_name.as_str(), memb_name.as_str()),
+                l.line,
+            ))?;
 
         let rel_offset: i32 = sdef.memb_stack_offsets[index];
         let memb_dtype: Dtype = fields[index].dtype(&self.scope)?;
@@ -86,7 +82,11 @@ impl Gen {
         // mov register, member
         let offset: i32 = l_offset + rel_offset;
         let reg: String = memb_dtype.variant.register('b', &self.scope)?;
-        self.asm_mov(AsmArg::Register(&reg), AsmArg::Stack(&memb_dtype, offset), true)
+        self.asm_mov(
+            AsmArg::Register(&reg),
+            AsmArg::Stack(&memb_dtype, offset),
+            true,
+        )
     }
 
     fn gen_cmp(&mut self, l: &Node, r: &Node, jmp: &str) -> Result<String, Error> {
@@ -94,7 +94,8 @@ impl Gen {
             cmp l, r
             <zf conditional>
         */
-        Ok(format!("{}{}",
+        Ok(format!(
+            "{}{}",
             self.asm_cmp(AsmArg::Node(l), AsmArg::Node(r))?,
             self.asm_zf_conditional(util::register('a', l, self)?.as_str(), jmp)
         ))
@@ -105,30 +106,33 @@ impl Gen {
         let br: String = util::register('b', l, self)?;
 
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, l.line);
-        let lcmp: String = format!("{}{}",
+        let lcmp: String = format!(
+            "{}{}",
             self.gen_cmp(l, &zero_node, "jne")?,
-            self.asm_mov(AsmArg::Register(br.as_str()), AsmArg::Register(ar.as_str()), true)?,
+            self.asm_mov(
+                AsmArg::Register(br.as_str()),
+                AsmArg::Register(ar.as_str()),
+                true
+            )?,
         );
 
         let rcmp: String = self.gen_cmp(r, &zero_node, "jne")?;
 
-        let asmop: String = format!("\n\t; [andor]\n\t{} {}, {}\n\ttest {}, {}",
+        let asmop: String = format!(
+            "\n\t; [andor]\n\t{} {}, {}\n\ttest {}, {}",
             match op {
                 TokenType::And => "and",
                 TokenType::Or => "or",
                 _ => unreachable!(),
             },
-            ar, br,
-            ar, ar
+            ar,
+            br,
+            ar,
+            ar
         );
         let to_eax: String = self.asm_zf_conditional(ar.as_str(), "jnz");
 
-        Ok(format!("{}{}{}{}",
-            lcmp,
-            rcmp,
-            asmop,
-            to_eax
-        ))
+        Ok(format!("{}{}{}{}", lcmp, rcmp, asmop, to_eax))
     }
 
     fn gen_not(&mut self, n: &Node) -> Result<String, Error> {
@@ -136,4 +140,3 @@ impl Gen {
         Ok(format!("\n\t; [not]{}", self.gen_cmp(n, &zero_node, "je")?))
     }
 }
-

@@ -1,17 +1,17 @@
+mod asm;
+mod cdefs;
 mod error;
 mod lexer;
 mod node;
 mod parser;
 mod preprocess;
-mod cdefs;
 mod scope;
-mod asm;
 
-use error::Error;
-use parser::Parser;
-use node::Node;
-use preprocess::Preprocessor;
 use asm::Gen;
+use error::Error;
+use node::Node;
+use parser::Parser;
+use preprocess::Preprocessor;
 use std::fs;
 use std::io::Write;
 use std::process::Command;
@@ -55,14 +55,17 @@ fn main() -> Result<(), String> {
 
     // Write to file
     let mut f = fs::File::create("a.s").expect("Unable to create file 'a.s'.");
-    f.write_all(result.as_bytes()).expect("Unable to write to file 'a.s'.");
+    f.write_all(result.as_bytes())
+        .expect("Unable to write to file 'a.s'.");
 
     // Assemble
-    let output = Command::new("sh").args(["-c", "nasm -felf64 a.s && ld *.o && rm *.o"]).output().unwrap();
+    let output = Command::new("sh")
+        .args(["-c", "nasm -felf64 a.s && ld *.o && rm *.o"])
+        .output()
+        .unwrap();
     if !output.status.success() {
         println!("{:#?}", output);
     }
 
     Ok(())
 }
-
