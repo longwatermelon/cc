@@ -5,4 +5,4 @@ C compiler
 * Address of, dereference
 * Comparison operators (in progress)
 * For loop
-
+* Fix struct / init list instability
