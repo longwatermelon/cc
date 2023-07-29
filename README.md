@@ -2,7 +2,7 @@
 C compiler
 
 # Todo
-* Address of, dereference (partially implemented)
+* Fix dereference assignment
 * Comparison operators (in progress)
 * For loop
 * Do while -> while
