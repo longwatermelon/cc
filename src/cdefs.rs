@@ -33,7 +33,7 @@ impl CFdef {
         let mut offset: i32 = 16;
         for param in params.iter() {
             stack_offsets.push(offset);
-            offset += param.dtype(scope)?.variant.num_bytes(scope)?;
+            offset += param.dtype(scope)?.num_bytes(scope)?;
         }
 
         Ok(Self {
@@ -58,7 +58,7 @@ impl CStruct {
         let mut offset: i32 = 0;
         for field in fields.iter() {
             stack_offsets.push(offset);
-            offset += field.dtype(scope)?.variant.num_bytes(scope)?;
+            offset += field.dtype(scope)?.num_bytes(scope)?;
         }
 
         Ok(Self {

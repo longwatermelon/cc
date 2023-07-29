@@ -29,51 +29,6 @@ impl DtypeVariant {
             )),
         }
     }
-
-    pub fn num_bytes(&self, scope: &Scope) -> Result<i32, Error> {
-        Ok(match self {
-            DtypeVariant::Int => 4,
-            DtypeVariant::Char => 1,
-            DtypeVariant::Void => 0,
-            DtypeVariant::Struct { name } => {
-                let NodeVariant::Struct { fields, .. } = scope.find_struct(name.as_str(), 0)?
-                    .node.variant.as_ref() else { unreachable!() };
-                let mut sum: i32 = 0;
-                for field in fields {
-                    sum += field.dtype(scope)?.variant.num_bytes(scope)?;
-                }
-
-                sum
-            }
-        })
-    }
-
-    pub fn deref(&self, scope: &Scope) -> Result<String, Error> {
-        #[cfg(target_arch = "x86_64")]
-        Ok(match self.num_bytes(scope)? {
-            1 => "BYTE",
-            4 => "DWORD",
-            8 => "QWORD",
-            _ => panic!(
-                "[DtypeVariant::deref] invalid size of {}",
-                self.num_bytes(scope)?
-            ),
-        }
-        .to_string())
-    }
-
-    pub fn register(&self, reg: char, scope: &Scope) -> Result<String, Error> {
-        Ok(match self.num_bytes(scope)? {
-            1 => format!("{}l", reg),
-            4 => format!("e{}x", reg),
-            #[cfg(target_arch = "x86_64")]
-            8 => format!("r{}x", reg),
-            _ => panic!(
-                "[DtypeVariant::register] invalid size of {}",
-                self.num_bytes(scope)?
-            ),
-        })
-    }
 }
 
 impl fmt::Display for DtypeVariant {
@@ -126,6 +81,71 @@ impl Dtype {
 
     pub fn from_fields_nderefs(variant: DtypeVariant, nderefs: usize) -> Self {
         Self { variant, nderefs }
+    }
+
+    pub fn num_bytes(&self, scope: &Scope) -> Result<i32, Error> {
+        Ok(
+            if self.nderefs > 0 {
+                // Pointer has 8 bytes
+                8
+            } else {
+                match &self.variant {
+                    DtypeVariant::Int => 4,
+                    DtypeVariant::Char => 1,
+                    DtypeVariant::Void => 0,
+                    DtypeVariant::Struct { name } => {
+                        let NodeVariant::Struct { fields, .. } = scope.find_struct(name.as_str(), 0)?
+                            .node.variant.as_ref() else { unreachable!() };
+                        let mut sum: i32 = 0;
+                        for field in fields {
+                            sum += field.dtype(scope)?.num_bytes(scope)?;
+                        }
+
+                        sum
+                    }
+                }
+            }
+        )
+    }
+
+    pub fn deref(&self, scope: &Scope) -> Result<&'static str, Error> {
+        #[cfg(target_arch = "x86_64")]
+        Ok(
+            if self.nderefs > 0 {
+                // Pointer has 8 bytes
+                "QWORD"
+            } else {
+                match self.num_bytes(scope)? {
+                    1 => "BYTE",
+                    4 => "DWORD",
+                    8 => "QWORD",
+                    _ => panic!(
+                        "[DtypeVariant::deref] invalid size of {}",
+                        self.num_bytes(scope)?
+                    ),
+                }
+            }
+        )
+    }
+
+    pub fn register(&self, reg: char, scope: &Scope) -> Result<String, Error> {
+        Ok(match self.num_bytes(scope)? {
+            1 => format!("{}l", reg),
+            4 => format!("e{}x", reg),
+            #[cfg(target_arch = "x86_64")]
+            8 => format!("r{}x", reg),
+            _ => panic!(
+                "[DtypeVariant::register] invalid size of {}",
+                self.num_bytes(scope)?
+            ),
+        })
+    }
+
+    pub fn default_node(&self, line: usize) -> Node {
+        match self.variant {
+            DtypeVariant::Int => Node::new(NodeVariant::Int { value: 0 }, line),
+            _ => todo!(),
+        }
     }
 }
 
@@ -279,6 +299,16 @@ impl Node {
                 field.dtype(scope)?
             }
             NodeVariant::Binop { l, .. } => l.dtype(scope)?,
+            NodeVariant::Unop { utype: TokenType::Amp, r } => {
+                let mut dtype: Dtype = r.dtype(scope)?;
+                dtype.nderefs += 1;
+                dtype
+            }
+            NodeVariant::Unop { utype: TokenType::Star, r } => {
+                let mut dtype: Dtype = r.dtype(scope)?;
+                dtype.nderefs -= 1;
+                dtype
+            }
             NodeVariant::Unop { r, .. } => r.dtype(scope)?,
             _ => panic!("{:?} doesn't have a dtype.", self.variant),
         })

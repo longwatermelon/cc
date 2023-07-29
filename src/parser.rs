@@ -299,7 +299,7 @@ impl Parser {
             _ => Ok(Node::new(
                 NodeVariant::Vardef {
                     var,
-                    value: Node::new(NodeVariant::Noop, 0),
+                    value: dtype.default_node(line),
                     dtype,
                 },
                 line,

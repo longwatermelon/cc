@@ -1,7 +1,7 @@
 use super::instruction::AsmArg;
 use super::util;
 use super::Gen;
-use crate::cdefs::CStruct;
+use crate::cdefs::{CVardef, CStruct};
 use crate::error::{Error, ErrorType};
 use crate::lexer::TokenType;
 use crate::node::{Dtype, DtypeVariant, Node, NodeVariant};
@@ -27,6 +27,8 @@ impl Gen {
         let NodeVariant::Unop { utype, r } = n.variant.as_ref() else { unreachable!() };
         match utype {
             TokenType::Not => self.gen_not(r),
+            TokenType::Amp => self.gen_addressof(r),
+            TokenType::Star => self.gen_deref(r),
             _ => panic!("[Gen::gen_unop] Unop {:?} not supported.", utype),
         }
     }
@@ -81,7 +83,7 @@ impl Gen {
 
         // mov register, member
         let offset: i32 = l_offset + rel_offset;
-        let reg: String = memb_dtype.variant.register('b', &self.scope)?;
+        let reg: String = memb_dtype.register('b', &self.scope)?;
         self.asm_mov(
             AsmArg::Register(&reg),
             AsmArg::Stack(&memb_dtype, offset),
@@ -138,5 +140,42 @@ impl Gen {
     fn gen_not(&mut self, n: &Node) -> Result<String, Error> {
         let zero_node: Node = Node::new(NodeVariant::Int { value: 0 }, n.line);
         Ok(format!("\n\t; [not]{}", self.gen_cmp(n, &zero_node, "je")?))
+    }
+
+    fn gen_addressof(&mut self, n: &Node) -> Result<String, Error> {
+        let dtype: Dtype = n.dtype(&self.scope)?;
+        // TODO Allow function return values as well
+        if !matches!(n.variant.as_ref(), NodeVariant::Var {..}) {
+            return Err(Error::new(ErrorType::InvalidAddressof(&dtype), n.line));
+        }
+
+        let vardef: &CVardef = self.scope.find_vardef(n.var_name().as_str(), n.line)?;
+        let offset: i32 = vardef.stack_offset;
+
+        // lea rax, [rbp-(n offset)]
+        Ok(format!("\n\t; [addressof]\n\tlea rax, [rbp{}]", offset))
+    }
+
+    fn gen_deref(&mut self, n: &Node) -> Result<String, Error> {
+        /*
+           ; stack to rax to prepare deref
+           mov rax, QWORD [rbp-(n offset)]
+           ; deref rax - in this case rax contained int*
+           mov eax, DWORD [rax]
+        */
+
+        let dtype: Dtype = n.dtype(&self.scope)?;
+        // TODO Allow function return values as well
+        if !matches!(n.variant.as_ref(), NodeVariant::Var {..}) {
+            return Err(Error::new(ErrorType::InvalidDeref(&dtype), n.line));
+        }
+
+        let vardef: &CVardef = self.scope.find_vardef(n.var_name().as_str(), n.line)?;
+        let offset: i32 = vardef.stack_offset;
+
+        let stack_to_rax: String = format!("\n\tmov rax, {}", self.gen_stack_repr(&n.dtype(&self.scope)?, offset)?);
+        let rax_to_result: String = format!("\n\tmov {}, {} [rax]", dtype.register('a', &self.scope)?, dtype.deref(&self.scope)?);
+
+        Ok(format!("{}{}", stack_to_rax, rax_to_result))
     }
 }

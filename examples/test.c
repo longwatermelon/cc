@@ -1,16 +1,8 @@
-int fib(int n)
-{
-    if (n == 0)
-        return 0;
-
-    if (n == 1 || n == 2)
-        return 1;
-
-    return fib(n - 1) + fib(n - 2);
-}
-
 int main()
 {
-    return fib(9);
+    int a = 95;
+    int *x = &a;
+    int y = *x;
+    return y;
 }
 

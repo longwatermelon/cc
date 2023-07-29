@@ -116,6 +116,7 @@ impl Gen {
                 utype: TokenType::Not,
                 ..
             } => util::register('a', n, self),
+            NodeVariant::Unop {..} => util::register('a', n, self),
             _ => panic!("[Gen::gen_repr] {:?} not implemented yet", n.variant),
         }
     }
@@ -125,7 +126,7 @@ impl Gen {
         #[cfg(target_arch = "x86_64")]
         Ok(format!(
             "{} [rbp{:+}]",
-            dtype.variant.deref(&self.scope)?,
+            dtype.deref(&self.scope)?,
             offset
         ))
     }

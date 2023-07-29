@@ -37,7 +37,7 @@ impl Gen {
         let res: String = if matches!(body.variant.as_ref(), NodeVariant::Noop) {
             String::new()
         } else {
-            format!("\n\t; [fdef] begin\n{}:\n\tpush rbp\n\tmov rbp, rsp\n\n\t; [fdef] body{}\t; [fdef] end body\n\t; [fdef] backup return\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?)
+            format!("\n\t; [fdef] begin\n{}:\n\tpush rbp\n\tmov rbp, rsp\n\n\t; [fdef] body{}\n\t; [fdef] end body\n\t; [fdef] backup return\n\tmov rsp, rbp\n\tpop rbp\n\tret\n", name, self.gen_expr(body)?)
         };
 
         self.scope.pop_layer();
@@ -194,7 +194,7 @@ impl Gen {
                 self.gen_init_list(&pushed.clone())?
             }
             _ => {
-                let nbytes: i32 = pushed.dtype(&self.scope)?.variant.num_bytes(&self.scope)?;
+                let nbytes: i32 = pushed.dtype(&self.scope)?.num_bytes(&self.scope)?;
 
                 format!(
                     "{}{}",

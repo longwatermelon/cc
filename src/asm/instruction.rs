@@ -21,9 +21,9 @@ impl<'a> AsmArg<'a> {
 
     fn associated_register(&self, gen: &mut Gen, reg: char) -> Result<String, Error> {
         match self {
-            AsmArg::Node(n) => n.dtype(&gen.scope)?.variant.register(reg, &gen.scope),
+            AsmArg::Node(n) => n.dtype(&gen.scope)?.register(reg, &gen.scope),
             AsmArg::Register(r) => Ok(r.to_string()),
-            AsmArg::Stack(dtype, _) => dtype.variant.register(reg, &gen.scope),
+            AsmArg::Stack(dtype, _) => dtype.register(reg, &gen.scope),
         }
     }
 
