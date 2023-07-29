@@ -94,7 +94,8 @@ impl fmt::Display for DtypeVariant {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Dtype {
     pub variant: DtypeVariant,
-    pub memops: Vec<char>,
+    // Dtype can't have ampersand, that's for c++
+    pub nderefs: usize,
 }
 
 impl fmt::Display for Dtype {
@@ -103,7 +104,7 @@ impl fmt::Display for Dtype {
             f,
             "{}{}",
             self.variant,
-            self.memops.iter().collect::<String>(),
+            "*".repeat(self.nderefs),
         )
     }
 }
@@ -112,19 +113,19 @@ impl Dtype {
     pub fn new(dtype: &str) -> Result<Self, Error> {
         Ok(Self {
             variant: DtypeVariant::new(dtype)?,
-            memops: Vec::new(),
+            nderefs: 0,
         })
     }
 
     pub fn from_fields(variant: DtypeVariant) -> Self {
         Self {
             variant,
-            memops: Vec::new(),
+            nderefs: 0,
         }
     }
 
-    pub fn from_fields_memops(variant: DtypeVariant, memops: Vec<char>) -> Self {
-        Self { variant, memops }
+    pub fn from_fields_nderefs(variant: DtypeVariant, nderefs: usize) -> Self {
+        Self { variant, nderefs }
     }
 }
 
@@ -214,7 +215,7 @@ impl Node {
 
     pub fn dtype(&self, scope: &Scope) -> Result<Dtype, Error> {
         Ok(match self.variant.as_ref() {
-            NodeVariant::Str { .. } => Dtype::from_fields_memops(DtypeVariant::Char, vec!['*']),
+            NodeVariant::Str { .. } => Dtype::from_fields_nderefs(DtypeVariant::Char, 1),
             NodeVariant::Int { .. } => Dtype::from_fields(DtypeVariant::Int),
             NodeVariant::Char { .. } => Dtype::from_fields(DtypeVariant::Char),
             NodeVariant::Fcall { name, .. } => {

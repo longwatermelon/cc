@@ -152,11 +152,10 @@ impl Parser {
             self.expect(TokenType::Id)?;
         }
 
-        while self.curr.ttype == TokenType::Amp || self.curr.ttype == TokenType::Star {
-            dtype.memops.push(self.curr.value.chars().next().unwrap());
+        while self.curr.ttype == TokenType::Star {
+            dtype.nderefs += 1;
             self.expect(self.curr.ttype)?;
         }
-        dtype.memops.reverse();
         Ok(dtype)
     }
 
