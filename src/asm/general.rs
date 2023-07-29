@@ -172,7 +172,7 @@ impl Gen {
         }
         let mut res: String = self.gen_expr(value)?;
 
-        res.push_str("\n\t; [vardef] stack offset change");
+        res.push_str("\n\t; [vardef] assign value");
         self.scope.stack_offset_change_n(n, -1)?;
         self.scope.push_vardef(n);
         res.push_str(&self.gen_stack_push(value)?);

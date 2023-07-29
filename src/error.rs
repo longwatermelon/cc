@@ -1,5 +1,5 @@
 use crate::lexer::TokenType;
-use crate::node::{Dtype, Node};
+use crate::node::{Dtype, Node, NodeVariant};
 use colored::Colorize;
 
 #[derive(Debug)]
@@ -37,10 +37,10 @@ pub enum ErrorType<'a> {
     NonexistentStruct(&'a str),
     /// Variable name
     NonexistentVariable(&'a str),
-    /// Data type of addressof target
-    InvalidAddressof(&'a Dtype),
+    /// Node variant of addressof target
+    InvalidAddressof(&'a NodeVariant),
     /// Data type of deref target
-    InvalidDeref(&'a Dtype),
+    InvalidDeref(&'a NodeVariant),
 }
 
 impl<'a> ErrorType<'a> {
@@ -85,8 +85,8 @@ impl<'a> ErrorType<'a> {
             ErrorType::NonexistentFunction(name) => format!("Function '{}' does not exist.", name),
             ErrorType::NonexistentStruct(name) => format!("Struct '{}' does not exist.", name),
             ErrorType::NonexistentVariable(name) => format!("Variable '{}' does not exist.", name),
-            ErrorType::InvalidAddressof(dtype) => format!("Can't take address of data type '{}'.", dtype),
-            ErrorType::InvalidDeref(dtype) => format!("Can't dereference data type '{}'.", dtype),
+            ErrorType::InvalidAddressof(dtype) => format!("Can't take address of '{:?}'.", dtype),
+            ErrorType::InvalidDeref(dtype) => format!("Can't dereference '{:?}'.", dtype),
         }
     }
 }

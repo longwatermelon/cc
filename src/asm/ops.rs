@@ -143,10 +143,8 @@ impl Gen {
     }
 
     fn gen_addressof(&mut self, n: &Node) -> Result<String, Error> {
-        let dtype: Dtype = n.dtype(&self.scope)?;
-        // TODO Allow function return values as well
         if !matches!(n.variant.as_ref(), NodeVariant::Var {..}) {
-            return Err(Error::new(ErrorType::InvalidAddressof(&dtype), n.line));
+            return Err(Error::new(ErrorType::InvalidAddressof(n.variant.as_ref()), n.line));
         }
 
         let vardef: &CVardef = self.scope.find_vardef(n.var_name().as_str(), n.line)?;
@@ -158,24 +156,35 @@ impl Gen {
 
     fn gen_deref(&mut self, n: &Node) -> Result<String, Error> {
         /*
-           ; stack to rax to prepare deref
-           mov rax, QWORD [rbp-(n offset)]
-           ; deref rax - in this case rax contained int*
+           ; Load n address into rax
+           mov rax, [rbp-(n offset)]
+           ; Dereference rax and store in rax (may be repeated for nested statements)
+           mov rax, QWORD [rax]
+           ; Store result in appropriately-sized register
+           ; In this case if rax was an int* then eax would be used, and DWORD would be used for dereferencing
            mov eax, DWORD [rax]
         */
 
-        let dtype: Dtype = n.dtype(&self.scope)?;
-        // TODO Allow function return values as well
-        if !matches!(n.variant.as_ref(), NodeVariant::Var {..}) {
-            return Err(Error::new(ErrorType::InvalidDeref(&dtype), n.line));
+        if !matches!(n.variant.as_ref(), NodeVariant::Var {..} | NodeVariant::Unop {..}) {
+            return Err(Error::new(ErrorType::InvalidDeref(n.variant.as_ref()), n.line));
         }
 
         let vardef: &CVardef = self.scope.find_vardef(n.var_name().as_str(), n.line)?;
         let offset: i32 = vardef.stack_offset;
-
         let stack_to_rax: String = format!("\n\tmov rax, {}", self.gen_stack_repr(&n.dtype(&self.scope)?, offset)?);
+
+        let dtype: Dtype = n.dtype(&self.scope)?;
+        // One deref left when moving to appropriately sized register
+        // However the value passed is already the value being dereferenced
+        // so these two effects cancel out, leaving dtype.nderefs
+        let derefs: String = "\n\tmov rax, QWORD [rax]".repeat(dtype.nderefs);
+
         let rax_to_result: String = format!("\n\tmov {}, {} [rax]", dtype.register('a', &self.scope)?, dtype.deref(&self.scope)?);
 
-        Ok(format!("{}{}", stack_to_rax, rax_to_result))
+        Ok(format!(
+            "\n\t; [deref stack to rax]{}\n\t; [deref handle nested]{}
+            \n\t; [deref rax to result]{}",
+            stack_to_rax, derefs, rax_to_result
+        ))
     }
 }
