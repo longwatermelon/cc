@@ -80,42 +80,7 @@ impl Gen {
                 btype: TokenType::Dot,
                 ..
             } => util::register('b', n, self),
-            NodeVariant::Binop {
-                btype: TokenType::Plus,
-                ..
-            }
-            | NodeVariant::Binop {
-                btype: TokenType::Minus,
-                ..
-            }
-            | NodeVariant::Binop {
-                btype: TokenType::Star,
-                ..
-            }
-            | NodeVariant::Binop {
-                btype: TokenType::Div,
-                ..
-            }
-            | NodeVariant::Binop {
-                btype: TokenType::EqualCmp,
-                ..
-            }
-            | NodeVariant::Binop {
-                btype: TokenType::NotEqual,
-                ..
-            }
-            | NodeVariant::Binop {
-                btype: TokenType::Or,
-                ..
-            }
-            | NodeVariant::Binop {
-                btype: TokenType::And,
-                ..
-            } => util::register('a', n, self),
-            NodeVariant::Unop {
-                utype: TokenType::Not,
-                ..
-            } => util::register('a', n, self),
+            NodeVariant::Binop { .. } => util::register('a', n, self),
             NodeVariant::Unop {..} => util::register('a', n, self),
             _ => panic!("[Gen::gen_repr] {:?} not implemented yet", n.variant),
         }
