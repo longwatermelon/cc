@@ -113,13 +113,13 @@ impl Error {
             self.line,
             self.message
         );
-        let longest: usize = *[self.line - 1, self.line, self.line + 1]
+        let longest: usize = *[if self.line == 0 { 0 } else { self.line - 1 }, self.line, self.line + 1]
             .map(|x| x.to_string().len())
             .iter()
             .max()
             .unwrap();
         for i in -1i32..=1 {
-            if (i + self.line as i32) < 0 || (i + self.line as i32) >= split.len() as i32 {
+            if (self.line as i32 + i - 1) < 0 || (i + self.line as i32) < 0 || (i + self.line as i32) >= split.len() as i32 {
                 continue;
             }
 
